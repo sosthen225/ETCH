@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+mon_projet_django_env/ # Assurez-vous que le nom de votre environnement virtuel est ici
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Django
+db.sqlite3
+/media/
+/static/
+*.log
+
+# IDEs
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+.Trashes
+Thumbs.db
