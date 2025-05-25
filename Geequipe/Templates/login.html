@@ -1,0 +1,141 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Connexion - Geequipe ETECHNOLOGIE Afrique</title>
+  <link
+      rel="icon"
+      href="{% static 'assets/img/kaiadmin/logo.gif' %}"
+      type="image/x-icon"
+    />
+  <link rel="stylesheet" href="{% static 'assets/css/login.css' %}">
+   <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      background-color: #f4f5f7;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .login-container {
+      background-color: white;
+      padding: 30px 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      width: 90%;
+      max-width: 400px;
+    }
+
+    .login-container h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #555;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="password"] {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 10px;
+      background-color: #0d6efd;
+      color: white;
+      border: none;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .btn-primary:hover {
+      background-color: #0b5ed7;
+    }
+
+    .forgot-password {
+      margin-top: 10px;
+      text-align: right;
+      font-size: 14px;
+    }
+
+    .forgot-password a {
+      color: #0d6efd;
+      text-decoration: none;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 13px;
+      color: #777;
+    }
+
+    @media (max-width: 500px) {
+      .login-container {
+        padding: 20px 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Logo -->
+    <header class="header">
+      <img src="{% static 'assets/img/kaiadmin/logo.gif' %}" alt="Logo ETECHNOLOGIE Afrique" class="logo">
+    </header>
+
+    <!-- Formulaire de connexion -->
+    <section class="login-form">
+      <h2>Se connecter</h2>
+      <form action="{% url 'login' %}" method="POST">
+        {% csrf_token %}
+        <div class="form-group">
+               <label for="username">Email ou Nom d'utilisateur :</label>
+          <input type="text" id="username" name="username" required placeholder="Entrez votre email ou Nom d'utilisateur" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Mot de passe :</label>
+          <input type="password" id="password" name="password" required placeholder="Entrez votre mot de passe" required>
+        </div>
+        <button type="submit" class="btn-primary">Se connecter</button>
+      </form>
+      <p class="forgot-password">
+        <a href="">Mot de passe oublié ?</a>
+      </p>
+    </section>
+  </div>
+
+  <footer class="footer">
+    <p>&copy; 2025 ETECHNOLOGIES-Afrique. Tous droits réservés.</p>
+  </footer>
+  
+  
+  
+</body>
+</html>
