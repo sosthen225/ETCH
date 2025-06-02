@@ -1,7 +1,5 @@
 from django.db import models
-
-# Create your models here.
-from django.db import models
+from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
 # ----------- CONSTANTES POUR LES CHOIX -----------
@@ -44,19 +42,18 @@ class Personnel(models.Model):
     nationalite = models.CharField(max_length=50)
     statut = models.CharField(max_length=50)
     residence = models.CharField(max_length=100)
-    langues = models.CharField(max_length=200)
 
     def __str__(self):
         return f"{self.prenoms} {self.nom}"
 
 
 class ChefProjet(models.Model):
-    nom = models.CharField(max_length=100)
-    email = models.EmailField()
-    mot_de_pass = models.CharField(max_length=100)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='chef_projet')
 
     def __str__(self):
-        return self.nom
+        return self.user.username
+
+   
 
 
 class Client(models.Model):
@@ -74,8 +71,8 @@ class Projet(models.Model):
     site = models.CharField(max_length=100)
     ville = models.CharField(max_length=100)
     pays = models.CharField(max_length=100)
-    chef_projet = models.ForeignKey(ChefProjet, on_delete=models.CASCADE)
-    client = models.ForeignKey(Client, on_delete=models.CASCADE)
+    chef_projet = models.ForeignKey(ChefProjet, on_delete=models.CASCADE, related_name='projets')
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='projets')
 
     def __str__(self):
         return self.nom
@@ -91,8 +88,8 @@ class Equipe(models.Model):
 
 
 class Membre(models.Model):
-    personnel = models.ForeignKey('Personnel', on_delete=models.CASCADE)
-    equipe = models.ForeignKey('Equipe', on_delete=models.CASCADE)
+    personnel = models.ForeignKey('Personnel', on_delete=models.CASCADE, related_name='membres')
+    equipe = models.ForeignKey('Equipe', on_delete=models.CASCADE, related_name='membres')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
 
     def __str__(self):
@@ -112,15 +109,15 @@ class Competence(models.Model):
 
 
 class Posseder(models.Model):
-    personnel = models.ForeignKey('Personnel', on_delete=models.CASCADE)
-    competence = models.ForeignKey('Competence', on_delete=models.CASCADE)
+    personnel = models.ForeignKey('Personnel', on_delete=models.CASCADE, related_name='competences_possedees')
+    competence = models.ForeignKey('Competence', on_delete=models.CASCADE, related_name='personnels')
 
     def __str__(self):
         return f"{self.personnel} possède {self.competence}"
 
 
 class Activite(models.Model):
-    projet = models.ForeignKey('Projet', on_delete=models.CASCADE)
+    projet = models.ForeignKey('Projet', on_delete=models.CASCADE, related_name='activites')
     nom = models.CharField(max_length=100)
     description = models.TextField()
     statut = models.CharField(max_length=50)
@@ -133,8 +130,8 @@ class Activite(models.Model):
 
 
 class Effectuer(models.Model):
-    personnel = models.ForeignKey('Personnel', on_delete=models.CASCADE)
-    activite = models.ForeignKey('Activite', on_delete=models.CASCADE)
+    personnel = models.ForeignKey('Personnel', on_delete=models.CASCADE, related_name='activites_effectuees')
+    activite = models.ForeignKey('Activite', on_delete=models.CASCADE, related_name='personnels_affectes')
     date_affecter = models.DateField()
 
     def __str__(self):
@@ -142,7 +139,7 @@ class Effectuer(models.Model):
 
 
 class Certificat(models.Model):
-    personnel = models.ForeignKey('Personnel', on_delete=models.CASCADE)
+    personnel = models.ForeignKey('Personnel', on_delete=models.CASCADE, related_name='certificats')
     libelle = models.CharField(max_length=100)
     type = models.CharField(max_length=50)
     date_obtention = models.DateField()
@@ -154,8 +151,8 @@ class Certificat(models.Model):
 
 
 class Realiser(models.Model):
-    equipe = models.ForeignKey('Equipe', on_delete=models.CASCADE)
-    activite = models.ForeignKey('Activite', on_delete=models.CASCADE)
+    equipe = models.ForeignKey('Equipe', on_delete=models.CASCADE, related_name='activites_realisees')
+    activite = models.ForeignKey('Activite', on_delete=models.CASCADE, related_name='equipes_realisation')
     date = models.DateField()
 
     def __str__(self):
@@ -163,7 +160,7 @@ class Realiser(models.Model):
 
 
 class Livrable(models.Model):
-    activite = models.ForeignKey('Activite', on_delete=models.CASCADE)
+    activite = models.ForeignKey('Activite', on_delete=models.CASCADE, related_name='livrables')
     nom_livrable = models.CharField(max_length=100)
 
     def __str__(self):
@@ -171,8 +168,8 @@ class Livrable(models.Model):
 
 
 class Mobilisation(models.Model):
-    activite = models.ForeignKey('Activite', on_delete=models.CASCADE)
-    chef_projet = models.ForeignKey('ChefProjet', on_delete=models.CASCADE)
+    activite = models.ForeignKey('Activite', on_delete=models.CASCADE, related_name='mobilisations')
+    chef_projet = models.ForeignKey('ChefProjet', on_delete=models.CASCADE, related_name='mobilisations')
     date_debut = models.DateField()
     date_fin = models.DateField()
     site = models.CharField(max_length=100)
@@ -182,15 +179,15 @@ class Mobilisation(models.Model):
 
 
 class AffectationProjet(models.Model):
-    equipe = models.ForeignKey('Equipe', on_delete=models.CASCADE)
+    equipe = models.ForeignKey('Equipe', on_delete=models.CASCADE, related_name='affectations_projet')
 
     def __str__(self):
         return f"Affectation de {self.equipe}"
 
 
 class Noter(models.Model):
-    chef_projet = models.ForeignKey('ChefProjet', on_delete=models.CASCADE)
-    personnel = models.ForeignKey('Personnel', on_delete=models.CASCADE)
+    chef_projet = models.ForeignKey('ChefProjet', on_delete=models.CASCADE, related_name='notations')
+    personnel = models.ForeignKey('Personnel', on_delete=models.CASCADE, related_name='notes')
     ponctualite = models.IntegerField()
     respect = models.IntegerField()
     performance = models.IntegerField()
@@ -200,8 +197,8 @@ class Noter(models.Model):
 
 
 class Evaluer(models.Model):
-    chef_projet = models.ForeignKey('ChefProjet', on_delete=models.CASCADE)
-    equipe = models.ForeignKey('Equipe', on_delete=models.CASCADE)
+    chef_projet = models.ForeignKey('ChefProjet', on_delete=models.CASCADE, related_name='evaluations')
+    equipe = models.ForeignKey('Equipe', on_delete=models.CASCADE, related_name='evaluations')
     ponctualite = models.IntegerField()
     respect = models.IntegerField()
     performance = models.IntegerField()
@@ -211,8 +208,8 @@ class Evaluer(models.Model):
 
 
 class Expatriation(models.Model):
-    personnel = models.ForeignKey('Personnel', on_delete=models.CASCADE)
-    pays = models.ForeignKey('PaysAffectation', on_delete=models.CASCADE)
+    personnel = models.ForeignKey('Personnel', on_delete=models.CASCADE, related_name='expatriations')
+    pays = models.ForeignKey('PaysAffectation', on_delete=models.CASCADE, related_name='expatriations')
     date_expatriation = models.DateField()
 
     def __str__(self):

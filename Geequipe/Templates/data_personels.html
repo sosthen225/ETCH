@@ -2,7 +2,8 @@
 
 {% block content %}
 <div class="container mt-4">
-  <h3 class="fw-bold mb-3">Liste du personnel</h3>
+  
+  <h3 class="fw-bold mb-3">Liste du personnel technique</h3>
 
   <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#addPersonnelModal">
     Ajouter un nouveau personnel
@@ -12,7 +13,7 @@
     <thead>
       <tr>
         <th>Nom</th>
-        <th>Poste</th>
+        <th>Prenoms</th>
         <th>Bureau</th>
         <th>Action</th>
       </tr>
@@ -68,14 +69,13 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
 
 <!-- Optional: Bootstrap (si pas déjà inclus) -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
 <!-- JS -->
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
 
 <script>
   $(document).ready(function () {
