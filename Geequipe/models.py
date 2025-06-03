@@ -40,7 +40,7 @@ class Personnel(models.Model):
     email = models.EmailField()
     telephone = models.CharField(max_length=20)
     nationalite = models.CharField(max_length=50)
-    statut = models.CharField(max_length=50)
+    statut = models.CharField(max_length=50, choices=[('actif', 'Actif'), ('inactif', 'Inactif'),('en_mission','En mission'),('en_disponibilité','En disponibilité')], default='actif')
     residence = models.CharField(max_length=100)
 
     def __str__(self):
@@ -49,7 +49,6 @@ class Personnel(models.Model):
 
 class ChefProjet(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='chef_projet')
-
     def __str__(self):
         return self.user.username
 
@@ -57,7 +56,7 @@ class ChefProjet(models.Model):
 
 
 class Client(models.Model):
-    nom = models.CharField(max_length=100)
+    nom = models.CharField(max_length=100, unique=True)
 
     def __str__(self):
         return self.nom
@@ -71,8 +70,16 @@ class Projet(models.Model):
     site = models.CharField(max_length=100)
     ville = models.CharField(max_length=100)
     pays = models.CharField(max_length=100)
+    statut = models.CharField(max_length=50, choices=[('en_cours', 'En cours'), ('termine', 'Terminé')], default='en_cours')
     chef_projet = models.ForeignKey(ChefProjet, on_delete=models.CASCADE, related_name='projets')
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='projets')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+      if self.date_fin < self.date_debut:
+        raise ValidationError("La date de fin ne peut pas être antérieure à la date de début.")
+
 
     def __str__(self):
         return self.nom
@@ -124,6 +131,13 @@ class Activite(models.Model):
     date_debut = models.DateField()
     date_fin = models.DateField()
     temps_passe = models.DurationField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def clean(self):
+     if self.date_fin < self.date_debut:
+        raise ValidationError("La date de fin ne peut pas être antérieure à la date de début.")
+
 
     def __str__(self):
         return self.nom
@@ -144,6 +158,7 @@ class Certificat(models.Model):
     type = models.CharField(max_length=50)
     date_obtention = models.DateField()
     validite = models.DateField()
+    statut= models.CharField(max_length=50)
     organisme = models.CharField(max_length=100)
 
     def __str__(self):
@@ -173,6 +188,14 @@ class Mobilisation(models.Model):
     date_debut = models.DateField()
     date_fin = models.DateField()
     site = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+    def clean(self):
+     if self.date_fin < self.date_debut:
+        raise ValidationError("La date de fin ne peut pas être antérieure à la date de début.")
+
 
     def __str__(self):
         return f"Mobilisation de {self.chef_projet} pour {self.activite}"
@@ -180,9 +203,11 @@ class Mobilisation(models.Model):
 
 class AffectationProjet(models.Model):
     equipe = models.ForeignKey('Equipe', on_delete=models.CASCADE, related_name='affectations_projet')
-
+    projet = models.ForeignKey('Projet', on_delete=models.CASCADE, related_name='equipe_affectee')
+    
     def __str__(self):
-        return f"Affectation de {self.equipe}"
+        return f"{self.equipe} affectée au projet {self.projet}"
+
 
 
 class Noter(models.Model):
@@ -191,6 +216,13 @@ class Noter(models.Model):
     ponctualite = models.IntegerField()
     respect = models.IntegerField()
     performance = models.IntegerField()
+
+    def clean(self):
+     for field in ['ponctualite', 'respect', 'performance']:
+        note = getattr(self, field)
+        if not (0 <= note <= 20):
+            raise ValidationError(f"La note de {field} doit être entre 0 et 20.")
+
 
     def __str__(self):
         return f"Note de {self.personnel}"
@@ -202,6 +234,14 @@ class Evaluer(models.Model):
     ponctualite = models.IntegerField()
     respect = models.IntegerField()
     performance = models.IntegerField()
+
+    
+    def clean(self):
+      for field in ['ponctualite', 'respect', 'performance']:
+        note = getattr(self, field)
+        if not (0 <= note <= 20):
+            raise ValidationError(f"La note de {field} doit être entre 0 et 20.")
+
 
     def __str__(self):
         return f"Évaluation de {self.equipe}"

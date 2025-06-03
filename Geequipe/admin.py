@@ -1,6 +1,4 @@
 from django.contrib import admin
-# your_app_name/admin.py
-from django.contrib import admin
 from .models import PaysAffectation, Personnel, ChefProjet, Client, Projet, Equipe, Membre, Competence, Posseder, Activite, Effectuer, Certificat, Realiser, Livrable, Mobilisation, AffectationProjet, Noter, Evaluer, Expatriation
 
 admin.site.register(PaysAffectation)

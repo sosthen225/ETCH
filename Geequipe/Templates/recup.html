@@ -1,0 +1,268 @@
+{% extends 'index.html' %}
+
+{% block content %}
+<!-- CSS CDN -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+
+
+<div class="container mt-5">
+ 
+  <button class="btn btn-primary mb-3" id="addRowBtn">Ajouter un nouveau projet</button>
+  <table id="myTable" class="display nowrap table table-bordered" style="width:100%">
+    
+    <thead>
+      <tr>
+        <th>Nom du projet</th>
+        <th>Type </th>
+        <th>Date de debut</th>
+        <th>Date de fin</th>
+        <th>Site</th>
+        <th>Ville</th>
+        <th>Pays</th>
+        <th>Statut</th>
+        <th>Chef de projet</th>
+        <th>Client</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      
+         {% for projet in projets %}
+  <tr id="row-{{ projet.id }}" data-id="{{ projet.id }}">
+    <td>{{ projet.nom }}</td>
+    <td>{{ projet.type }}</td>
+    <td>{{ projet.date_debut }}</td>
+    <td>{{ projet.date_fin }}</td>
+    <td>{{ projet.site }}</td>
+    <td>{{ projet.ville }}</td>
+    <td>{{ projet.pays }}</td>
+     <td>{{ projet.statut }}</td>
+    <td>{{ projet.chef_projet.user.get_full_name }}</td>
+    <td>{{ projet.client.nom }}</td>
+
+    <td>
+          <button class="btn btn-sm btn-warning editBtn">Modifier</button>
+          <button class="btn btn-sm btn-danger deleteBtn">Supprimer</button>
+        </td>
+      </tr>
+      
+  {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="rowModal" tabindex="-1" aria-labelledby="rowModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <form id="rowForm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="rowModalLabel">Nouvelle ligne</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Nom du projet</label>
+            <input type="text" class="form-control" id="nom_projet" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Type</label>
+            <input type="text" class="form-control" id="type" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Date de début</label>
+            <input type="date" class="form-control" id="date_debut" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Date de fin</label>
+            <input type="date" class="form-control" id="date_fin" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Site</label>
+            <input type="text" class="form-control" id="site" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Ville</label>
+            <input type="text" class="form-control" id="ville" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Pays</label>
+            <input type="text" class="form-control" id="pays" required>
+          </div>
+          <!-- Champ Statut -->
+<div class="mb-3">
+  <label class="form-label">Statut</label>
+  <select class="form-control" id="statut" required>
+    <option value="en cours">En cours</option>
+    <option value="en attente">En attente</option>
+    <option value="terminé">Terminé</option>
+  </select>
+</div>
+
+<!-- Champ Chef de projet -->
+<div class="mb-3">
+  <label class="form-label">Chef de projet</label>
+  <select class="form-control" id="chef_projet" required>
+    {% for user in chefs_de_projet %}
+      <option value="{{ user.id }}">{{ user.get_full_name }}</option>
+    {% endfor %}
+  </select>
+</div>
+
+<!-- Champ Client -->
+<div class="mb-3">
+  <label class="form-label">Client</label>
+  <select class="form-control" id="client_select">
+    {% for c in clients %}
+      <option value="{{ c.id }}">{{ c.nom }}</option>
+    {% endfor %}
+    <option value="autre">Autre...</option>
+  </select>
+</div>
+
+<div class="mb-3" id="nouveau_client_div" style="display: none;">
+  <label class="form-label">Nouveau client</label>
+  <input type="text" class="form-control" id="nouveau_client">
+</div>
+</div>
+        <div class="modal-footer">
+          <input type="hidden" id="rowIndex">
+          <button type="submit" class="btn btn-success">Enregistrer</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- JS CDN -->
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+<script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
+
+
+
+
+<script>
+$(document).ready(function() {
+  var table = $('#myTable').DataTable({
+    scrollY: '500px',
+    scrollX: true,
+    scrollCollapse: true,
+    fixedHeader: true,
+    paging: true,
+    dom: 'Bfrtip',
+    language: {
+    emptyTable: "Aucun projet à afficher pour le moment"
+  },
+    buttons: [
+      {
+        extend: 'excelHtml5',
+        text: 'Télécharger Excel',
+        className: 'btn btn-success mb-3'
+      }
+    ]
+    
+    
+  });
+
+
+  // Ajouter un projet
+  $('#addRowBtn').click(function() {
+    $('#rowForm')[0].reset();
+    $('#rowIndex').val('');
+    $('#rowModalLabel').text('Ajouter un nouveau projet');
+    $('#rowModal').modal('show');
+  });
+
+  // Modifier un projet
+  $('#myTable tbody').on('click', '.editBtn', function() {
+    var row = $(this).closest('tr');
+    var data = table.row(row).data();
+
+    $('#nom_projet').val(data[0]);
+    $('#type').val(data[1]);
+    $('#date_debut').val(data[2]);
+    $('#date_fin').val(data[3]);
+    $('#site').val(data[4]);
+    $('#ville').val(data[5]);
+    $('#pays').val(data[6]);
+    $('#chef_projet').val(data[7]);
+    $('#client').val(data[8]);
+    $('#rowIndex').val(table.row(row).index());
+
+    $('#rowModalLabel').text('Modifier le projet');
+    $('#rowModal').modal('show');
+  });
+
+  // Supprimer un projet
+  $('#myTable tbody').on('click', '.deleteBtn', function() {
+    if (confirm("Supprimer ce projet ?")) {
+      table.row($(this).closest('tr')).remove().draw();
+    }
+  });
+
+  // Sauvegarder (ajout/modification)
+  $('#rowForm').submit(function(e) {
+  e.preventDefault();
+
+  var clientId = $('#client_select').val();
+  var data = {
+    'nom': $('#nom_projet').val(),
+    'type': $('#type').val(),
+    'date_debut': $('#date_debut').val(),
+    'date_fin': $('#date_fin').val(),
+    'site': $('#site').val(),
+    'ville': $('#ville').val(),
+    'pays': $('#pays').val(),
+    'statut': $('#statut').val(),
+    'chef_projet': $('#chef_projet').val(),
+    'client_id': clientId
+  };
+
+  // Ajoute le champ seulement si "autre" est sélectionné
+  if (clientId === 'autre') {
+    data['nouveau_client'] = $('#nouveau_client').val().trim();
+  }
+
+  $.ajax({
+    url: "{% url 'ajouter_projet' %}",
+    type: "POST",
+    data: JSON.stringify(data),
+    contentType: "application/json",
+    headers: {
+      "X-CSRFToken": "{{ csrf_token }}"
+    },
+    success: function (response) {
+      if (response.success) {
+        $('#monModal').modal('hide');
+        alert("Projet enregistré !");
+        location.reload();
+      }
+    },
+    error: function (xhr) {
+      alert("Erreur lors de l'enregistrement.");
+      console.log(xhr.responseText); // 🔍 pour voir les erreurs exactes
+    }
+ 
+
+});
+
+});
+
+  $('#client_select').change(function() {
+  if ($(this).val() === 'autre') {
+    $('#nouveau_client_div').show();
+  } else {
+    $('#nouveau_client_div').hide();
+    $('#nouveau_client').val('');
+  }
+});
+
+});
+</script>
+
+{% endblock %}
