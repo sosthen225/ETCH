@@ -1,4 +1,5 @@
 from urllib import request
+from django.forms import ValidationError
 from django.shortcuts import get_object_or_404, render
 from django.contrib.auth import logout
 from django.shortcuts import render, redirect
@@ -16,14 +17,14 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import User
-
+from django.views.decorators.csrf import csrf_protect
 from Geequipe.models import ChefProjet, Projet, Client
 
 import json
 from datetime import datetime
 
 
-
+@csrf_protect
 def login_page(request):
     if request.method == "POST":
         username = request.POST.get("username")
@@ -113,59 +114,52 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import Projet, Client, ChefProjet
 from django.contrib.auth.models import User
+from django.views.decorators.http import require_POST 
+from django.db import transaction
 
+@csrf_exempt
 
 @csrf_exempt
 def ajouter_projet(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body)
+    if request.method == 'POST':
+        data = json.loads(request.body)
 
-            nom = data.get('nom')
-            type_proj = data.get('type')
-            date_debut = data.get('date_debut')
-            date_fin = data.get('date_fin')
-            site = data.get('site')
-            ville = data.get('ville')
-            pays = data.get('pays')
-            statut = data.get('statut')
-            chef_projet_id = data.get('chef_projet')
-            client_id = data.get('client_id')
-            nouveau_client_nom = data.get('nouveau_client', '').strip()
+        nom = data.get('nom')
+        type_ = data.get('type')
+        date_debut = data.get('date_debut')
+        date_fin = data.get('date_fin')
+        site = data.get('site')
+        ville = data.get('ville')
+        pays = data.get('pays')
+        statut = data.get('statut')
+        chef_projet_id = data.get('chef_projet')
+        client_nom = data.get('client_nom').strip()
 
-            if not nom or not chef_projet_id or not statut:
-                return JsonResponse({'success': False, 'error': 'Champs obligatoires manquants.'})
+        # ✅ 1. Cherche le client existant ou crée-le
+        client = Client.objects.filter(nom__iexact=client_nom).first()
+        if not client:
+            client = Client.objects.create(nom=client_nom)
 
-            # Récupérer ou créer client
-            if client_id == 'autre':
-                if not nouveau_client_nom:
-                    return JsonResponse({'success': False, 'error': 'Le nom du nouveau client est requis.'})
-                # Vérifie si le client existe déjà (optionnel)
-                client, created = Client.objects.get_or_create(nom=nouveau_client_nom)
-            else:
-                client = get_object_or_404(Client, id=client_id)
+        # ✅ 2. Récupère le chef de projet
+        chef_projet = ChefProjet.objects.get(id=chef_projet_id)
 
-            chef_projet = get_object_or_404(User, id=chef_projet_id)
+        # ✅ 3. Crée le projet
+        Projet.objects.create(
+            nom=nom,
+            type=type_,
+            date_debut=date_debut,
+            date_fin=date_fin,
+            site=site,
+            ville=ville,
+            pays=pays,
+            statut=statut,
+            chef_projet=chef_projet,
+            client=client
+        )
 
-            projet = Projet.objects.create(
-                nom=nom,
-                type=type_proj,
-                date_debut=date_debut,
-                date_fin=date_fin,
-                site=site,
-                ville=ville,
-                pays=pays,
-                statut=statut,
-                chef_projet=chef_projet,
-                client=client,
-            )
+        return JsonResponse({'success': True})
 
-            return JsonResponse({'success': True, 'id': projet.id})
-
-        except Exception as e:
-            return JsonResponse({'success': False, 'error': str(e)})
-
-    return JsonResponse({'success': False, 'error': 'Méthode non autorisée.'})
+    return JsonResponse({'success': False, 'error': 'Méthode non autorisée'})
 
    
 

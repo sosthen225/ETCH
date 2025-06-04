@@ -68,9 +68,9 @@
           <div class="mb-3">
             <label>Statut</label>
             <select class="form-control" id="statut" required>
-              <option value="en cours">En cours</option>
-              <option value="en attente">En attente</option>
-              <option value="terminé">Terminé</option>
+              <option value="en_cours">En cours</option>
+              <option value="en_attente">En attente</option>
+              <option value="termine">Terminé</option>
             </select>
           </div>
 
@@ -84,20 +84,11 @@
           </div>
 
           <div class="mb-3">
-            <label>Client</label>
-            <select class="form-control" id="client_select" required>
-              {% for c in clients %}
-              <option value="{{ c.id }}">{{ c.nom }}</option>
-              {% endfor %}
-              <option value="autre">Autre...</option>
-            </select>
-          </div>
+  <label class="form-label">Client</label>
+  <input type="text" class="form-control" id="client_nom" required placeholder="Nom du client">
+</div>
 
-          <div class="mb-3" id="nouveau_client_div" style="display:none;">
-            <label>Nouveau client</label>
-            <input type="text" class="form-control" id="nouveau_client">
-          </div>
-        </div>
+          
 
         <div class="modal-footer">
           <input type="hidden" id="rowIndex">
@@ -142,85 +133,13 @@ $(document).ready(function () {
     $('#rowForm')[0].reset();
     $('#rowModalLabel').text('Ajouter un nouveau projet');
     $('#rowModal').modal('show');
-    $('#nouveau_client_div').hide();
   });
 
-  // Édition
-  $('#myTable tbody').on('click', '.editBtn', function () {
-    var row = $(this).closest('tr');
-    var data = table.row(row).data();
-
-    $('#nom_projet').val(data[0]);
-    $('#type').val(data[1]);
-    $('#date_debut').val(data[2]);
-    $('#date_fin').val(data[3]);
-    $('#site').val(data[4]);
-    $('#ville').val(data[5]);
-    $('#pays').val(data[6]);
-    $('#statut').val(data[7]);
-    $('#chef_projet').val(row.find('td:eq(8)').data('id')); // si id stocké
-    $('#client_select').val(row.find('td:eq(9)').data('id'));
-    $('#rowModalLabel').text('Modifier le projet');
-    $('#rowModal').modal('show');
-  });
-
-  // Suppression
-  $('#myTable tbody').on('click', '.deleteBtn', function () {
-    if (confirm("Supprimer ce projet ?")) {
-      table.row($(this).closest('tr')).remove().draw();
-    }
-  });
-
+  
   // Envoi du formulaire
-  $('#rowForm').submit(function (e) {
-    e.preventDefault();
+ 
 
-    var clientId = $('#client_select').val();
-    var data = {
-      nom: $('#nom_projet').val(),
-      type: $('#type').val(),
-      date_debut: $('#date_debut').val(),
-      date_fin: $('#date_fin').val(),
-      site: $('#site').val(),
-      ville: $('#ville').val(),
-      pays: $('#pays').val(),
-      statut: $('#statut').val(),
-      chef_projet: $('#chef_projet').val(),
-      client_id: clientId
-    };
-
-    if (clientId === 'autre') {
-      data['nouveau_client'] = $('#nouveau_client').val().trim();
-    }
-
-    $.ajax({
-      url: "{% url 'ajouter_projet' %}",
-      method: "POST",
-      data: JSON.stringify(data),
-      contentType: "application/json",
-      headers: { "X-CSRFToken": "{{ csrf_token }}" },
-      success: function (response) {
-        if (response.success) {
-          $('#rowModal').modal('hide');
-          alert("Projet enregistré !");
-          location.reload();
-        }
-      },
-      error: function (xhr) {
-        alert("Erreur lors de l'enregistrement.");
-        console.error(xhr.responseText);
-      }
-    });
-  });
-
-  // Affichage du champ "nouveau client"
-  $('#client_select').change(function () {
-    if ($(this).val() === 'autre') {
-      $('#nouveau_client_div').show();
-    } else {
-      $('#nouveau_client_div').hide().find('input').val('');
-    }
-  });
+ 
 });
 </script>
 {% endblock %}
