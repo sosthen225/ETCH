@@ -37,8 +37,12 @@
         <td>{{ projet.chef_projet.user.get_full_name }}</td>
         <td>{{ projet.client.nom }}</td>
         <td>
-          <button class="btn btn-warning btn-sm editBtn">Modifier</button>
-          <button class="btn btn-danger btn-sm deleteBtn">Supprimer</button>
+          <a href="{% url 'modifier_projet' projet.id %}" class="btn btn-warning btn-sm">Modifier</a>
+          <form action="{% url 'supprimer_projet' projet.id %}" method="post" style="display:inline;">
+  {% csrf_token %}
+  <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Confirmer la suppression ?')">Supprimer</button>
+</form>
+
         </td>
       </tr>
       {% endfor %}
@@ -49,6 +53,9 @@
 <!-- Modal -->
 <div class="modal fade" id="rowModal" tabindex="-1" aria-labelledby="rowModalLabel" aria-hidden="true">
   <div class="modal-dialog">
+
+    <div id="errorMessage" style="color: red; display: none; margin-bottom: 10px;"></div>
+
     <form id="rowForm">
       <div class="modal-content">
         <div class="modal-header">
@@ -58,7 +65,12 @@
         <div class="modal-body">
           <!-- Champs -->
           <div class="mb-3"><label>Nom du projet</label><input name="nom" type="text" class="form-control" id="nom_projet" required></div>
-          <div class="mb-3"><label>Type</label><input name="type" type="text" class="form-control" id="type" required></div>
+          
+          
+          <div class="mb-3">
+            <label>Type</label><input name="type" type="text" class="form-control" id="type" required></div>
+
+
           <div class="mb-3"><label>Date de début</label><input name="date_debut" type="date" class="form-control" id="date_debut" required></div>
           <div class="mb-3"><label>Date de fin</label><input name="date_fin" type="date" class="form-control" id="date_fin" required></div>
           <div class="mb-3"><label>Site</label><input name="site" type="text" class="form-control" id="site" required></div>
@@ -128,18 +140,66 @@ $(document).ready(function () {
     ]
   });
 
-  // Afficher le formulaire
+  // Afficher le formulaire dans le modal
   $('#addRowBtn').click(function () {
     $('#rowForm')[0].reset();
     $('#rowModalLabel').text('Ajouter un nouveau projet');
     $('#rowModal').modal('show');
   });
-
   
-  // Envoi du formulaire
- 
 
- 
+  $('#rowForm').on('submit', function (e) {
+  e.preventDefault();
+
+  const projetId = $('#rowIndex').val();  // Si vide, on est en mode "ajout"
+  
+
+  const data = {
+    nom: $('#nom_projet').val(),
+    type: $('#type').val(),
+    date_debut: $('#date_debut').val(),
+    date_fin: $('#date_fin').val(),
+    site: $('#site').val(),
+    ville: $('#ville').val(),
+    pays: $('#pays').val(),
+    statut: $('#statut').val(),
+    chef_projet: $('#chef_projet').val(),
+    client_nom: $('#client_nom').val().trim()
+  };
+
+  $('#errorMessage').hide().text('');
+
+  const url = projetId
+    ? `/modifier_projet/${projetId}/`  // Modification
+    : "{% url 'ajouter_projet' %}";   // Ajout (nom de l'URL Django à adapter)
+
+  $.ajax({
+    url: url,
+    method: "POST",
+    contentType: "application/json",
+    data: JSON.stringify(data),
+    headers: {
+      "X-CSRFToken": "{{ csrf_token }}"
+    },
+    success: function (response) {
+      if (response.success) {
+        $('#rowModal').modal('hide');
+        alert(projetId ? "Projet modifié !" : "Projet ajouté !");
+        location.reload(); // Rafraîchit la table
+      } else {
+        $('#errorMessage').text(response.error).show();
+      }
+    },
+    error: function (xhr) {
+      console.log(xhr.responseText);
+      $('#errorMessage').text("Erreur AJAX !").show();
+    }
+  });
 });
+
+});
+
+
 </script>
+
 {% endblock %}

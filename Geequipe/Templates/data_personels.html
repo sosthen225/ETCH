@@ -1,111 +1,281 @@
 {% extends 'index.html' %}
 
 {% block content %}
-<div class="container mt-4">
-  
-  <h3 class="fw-bold mb-3">Liste du personnel technique</h3>
+<!-- CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 
-  <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#addPersonnelModal">
-    Ajouter un nouveau personnel
-  </button>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
-  <table id="datatable-scroll" class="display nowrap table table-bordered" style="width:100%">
+<script>
+$(document).ready(function () {
+  // Initialisation Select2
+  $('#competencesSelect').select2({
+    dropdownParent: $('#rowModal'),
+    width: '100%',
+    placeholder: 'Choisir des compétences'
+  });
+
+  // Ajout dynamique de certificats
+  $('#addCertificatBtn').click(function () {
+    $('#certificatsContainer').append(`
+      <div class="card p-2 mb-2 certificat-item border rounded">
+        <div class="mb-2"><label>Libellé</label><input type="text" name="cert_libelle[]" class="form-control" required></div>
+        <div class="mb-2"><label>Type</label><input type="text" name="cert_type[]" class="form-control" required></div>
+        <div class="mb-2"><label>Date d'obtention</label><input type="date" name="cert_obtention[]" class="form-control" required></div>
+        <div class="mb-2"><label>Validité</label><input type="date" name="cert_validite[]" class="form-control" required></div>
+        <div class="mb-2">
+          <label>Statut</label>
+          <select name="cert_statut[]" class="form-control" required>
+            <option value="a_jour">À jour</option>
+            <option value="expire">Expiré</option>
+          </select>
+        </div>
+        <div class="mb-2"><label>Organisme</label><input type="text" name="cert_organisme[]" class="form-control" required></div>
+        <button type="button" class="btn btn-sm btn-danger remove-cert">Supprimer</button>
+      </div>
+    `);
+  });
+
+  // Suppression de certificat
+  $(document).on('click', '.remove-cert', function () {
+    $(this).closest('.certificat-item').remove();
+  });
+
+  // Envoi AJAX
+  $('#rowForm').on('submit', function (e) {
+    e.preventDefault();
+
+    const certificats = [];
+    $('.certificat-item').each(function () {
+      certificats.push({
+        libelle: $(this).find('[name="cert_libelle[]"]').val(),
+        type: $(this).find('[name="cert_type[]"]').val(),
+        date_obtention: $(this).find('[name="cert_obtention[]"]').val(),
+        validite: $(this).find('[name="cert_validite[]"]').val(),
+        statut: $(this).find('[name="cert_statut[]"]').val(),
+        organisme: $(this).find('[name="cert_organisme[]"]').val(),
+      });
+    });
+
+    const data = {
+      nom: $('[name="nom"]').val(),
+      prenoms: $('[name="prenoms"]').val(),
+      email: $('[name="email"]').val(),
+      telephone: $('[name="telephone"]').val(),
+      nationalite: $('[name="nationalite"]').val(),
+      statut: $('[name="statut"]').val(),
+      residence: $('[name="residence"]').val(),
+      pays_affectation: $('[name="pays-affectation"]').val(),
+      competences: $('#competencesSelect').val(),
+      certificats: certificats
+    };
+
+    $.ajax({
+      url: "{% url 'ajouter_personnel' %}",
+      method: "POST",
+      contentType: "application/json",
+      data: JSON.stringify(data),
+      headers: {
+        "X-CSRFToken": "{{ csrf_token }}",
+      },
+      success: function (response) {
+        if (response.success) {
+          $('#rowModal').modal('hide');
+          location.reload();
+        } else {
+          alert("Erreur: " + response.error);
+        }
+      },
+      error: function () {
+        alert("Erreur de soumission.");
+      }
+    });
+  });
+});
+</script>
+
+<div class="container mt-5">
+  <button class="btn btn-primary mb-3" id="addRowBtn">Ajouter un nouvel agent</button>
+  <table id="myTable" class="display nowrap table table-bordered" style="width:100%">
     <thead>
       <tr>
         <th>Nom</th>
-        <th>Prenoms</th>
-        <th>Bureau</th>
+        <th>Prénoms</th>
+        <th>Email</th>
+        <th>Téléphone</th>
+        <th>Nationalité</th>
+        <th>Statut</th>
+        <th>Résidence</th>
+        <th>Pays d'affectation</th>
+        <th>Compétences</th>
+        <th>Certificats</th>
         <th>Action</th>
       </tr>
     </thead>
     <tbody>
-      <tr>
-        <td>Tiger Nixon</td>
-        <td>System Architect</td>
-        <td>Edinburgh</td>
+      {% for agent in personnel %}
+      <tr data-id="{{ agent.id }}">
+        <td>{{ agent.nom }}</td>
+        <td>{{ agent.prenoms }}</td>
+        <td>{{ agent.email }}</td>
+        <td>{{ agent.telephone }}</td>
+        <td>{{ agent.nationalite }}</td>
+        <td>{{ agent.get_statut_display }}</td>
+        <td>{{ agent.residence }}</td>
         <td>
-          <button class="btn btn-primary btn-sm"><i class="fa fa-edit"></i></button>
-          <button class="btn btn-danger btn-sm"><i class="fa fa-times"></i></button>
+          {% for expat in agent.expatriations.all %}
+            {{ expat.pays.get_nom_pays_display }}{% if not forloop.last %}, {% endif %}
+          {% endfor %}
+        </td>
+        <td>
+          {% for possede in agent.competences_possedees.all %}
+            {{ possede.competence }}{% if not forloop.last %}, {% endif %}
+          {% endfor %}
+        </td>
+        <td>
+          {% for certif in agent.certificats.all %}
+            {{ certif.libelle }} ({{ certif.organisme }})<br>
+          {% endfor %}
+        </td>
+        <td>
+          <a href="#" class="btn btn-warning btn-sm">Modifier</a>
+          <form action="{% url 'supprimer_personnel' agent.id %}" method="post" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Confirmer la suppression ?')">Supprimer</button>
+          </form>
         </td>
       </tr>
+      {% endfor %}
     </tbody>
   </table>
 </div>
 
-<!-- Modal -->
-<div class="modal fade" id="addPersonnelModal" tabindex="-1" aria-labelledby="addPersonnelLabel" aria-hidden="true">
+<!-- MODAL -->
+<div class="modal fade" id="rowModal" tabindex="-1" aria-labelledby="rowModalLabel" aria-hidden="true">
   <div class="modal-dialog">
-    <div class="modal-content">
-      <form id="addPersonnelForm">
+    <form id="rowForm">
+      <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="addPersonnelLabel">Ajouter un nouveau personnel</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+          <h5 class="modal-title" id="rowModalLabel">Nouvel Agent</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <div class="mb-3">
-            <label for="nom" class="form-label">Nom</label>
-            <input type="text" class="form-control" id="nom" required>
-          </div>
-          <div class="mb-3">
-            <label for="poste" class="form-label">Poste</label>
-            <input type="text" class="form-control" id="poste" required>
-          </div>
-          <div class="mb-3">
-            <label for="bureau" class="form-label">Bureau</label>
-            <input type="text" class="form-control" id="bureau" required>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-primary">Ajouter</button>
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-        </div>
-      </form>
-    </div>
+  <div class="mb-3"><label>Nom</label><input name="nom" type="text" class="form-control" required></div>
+  <div class="mb-3"><label>Prénoms</label><input name="prenoms" type="text" class="form-control" required></div>
+  <div class="mb-3"><label>Email</label><input name="email" type="email" class="form-control" required></div>
+  <div class="mb-3"><label>Téléphone</label><input name="telephone" type="text" class="form-control" required></div>
+  <div class="mb-3"><label>Nationalité</label><input name="nationalite" type="text" class="form-control" required></div>
+  <div class="mb-3">
+    <label>Statut</label>
+    <select class="form-control" name="statut" required>
+      <option value="actif">Actif</option>
+      <option value="inactif">Inactif</option>
+      <option value="en_mission">En mission</option>
+      <option value="en_disponibilité">En disponibilité</option>
+    </select>
+  </div>
+  <div class="mb-3"><label>Résidence</label><input name="residence" type="text" class="form-control" required></div>
+  <div class="mb-3"><label>Pays d'affectation</label><input name="pays-affectation" type="text" class="form-control" required></div>
+
+  <!-- Compétences multiselect -->
+  <div class="mb-3">
+    <label>Compétences</label>
+    <select name="competences" class="form-control" id="competencesSelect" multiple="multiple" required>
+      {% for c in competences %}
+        <option value="{{ c.id }}">{{ c.nom }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Certificats dynamiques -->
+  <div class="mb-3">
+    <label>Certificats</label>
+    <div id="certificatsContainer"></div>
+    <button type="button" class="btn btn-secondary btn-sm mt-2" id="addCertificatBtn">+ Ajouter un certificat</button>
   </div>
 </div>
 
-<!-- DataTables CSS -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css">
-
-<!-- Optional: Bootstrap (si pas déjà inclus) -->
-
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+        <div class="modal-footer">
+          <input type="hidden" id="rowIndex">
+          <button type="submit" class="btn btn-success">Enregistrer</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
 
 <!-- JS -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
+
 
 <script>
-  $(document).ready(function () {
-    const table = $('#datatable-scroll').DataTable({
-      scrollY: '300px',
-      scrollCollapse: true,
-      paging: false,
-      fixedHeader: true
-    });
+$(document).ready(function () {
+  var table = $('#myTable').DataTable({
+    scrollY: '500px',
+    scrollX: true,
+    scrollCollapse: true,
+    fixedHeader: true,
+    paging: true,
+    dom: 'Bfrtip',
+    language: {
+      emptyTable: "Aucun agent à afficher pour le moment"
+    },
+    buttons: [{
+      extend: 'excelHtml5',
+      text: 'Télécharger Excel',
+      className: 'btn btn-success mb-3'
+    }]
+  });
 
-    $('#addPersonnelForm').on('submit', function (e) {
-      e.preventDefault();
+  $('#addRowBtn').click(function () {
+    $('#rowForm')[0].reset();
+    $('#rowModalLabel').text('Ajouter un nouvel agent');
+    $('#rowModal').modal('show');
+  });
 
-      const nom = $('#nom').val();
-      const poste = $('#poste').val();
-      const bureau = $('#bureau').val();
+  $('#rowForm').on('submit', function (e) {
+    e.preventDefault();
+    const data = {
+      nom: $('[name="nom"]').val(),
+      prenoms: $('[name="prenoms"]').val(),
+      email: $('[name="email"]').val(),
+      telephone: $('[name="telephone"]').val(),
+      nationalite: $('[name="nationalite"]').val(),
+      statut: $('[name="statut"]').val(),
+      residence: $('[name="residence"]').val(),
+      pays_affectation: $('[name="pays-affectation"]').val(),
+     competences: $('[name="competences"]').val(),
+     certificats: $('[name="Certificats"]').val()
+    };
 
-      table.row.add([
-        nom,
-        poste,
-        bureau,
-        `<button class="btn btn-primary btn-sm"><i class="fa fa-edit"></i></button>
-         <button class="btn btn-danger btn-sm"><i class="fa fa-times"></i></button>`
-      ]).draw();
-
-      // Reset form & fermer le modal
-      this.reset();
-      const modal = bootstrap.Modal.getInstance(document.getElementById('addPersonnelModal'));
-      modal.hide();
+    $.ajax({
+      url: "{% url 'ajouter_personnel' %}",
+      method: "POST",
+      contentType: "application/json",
+      data: JSON.stringify(data),
+      headers: {
+        "X-CSRFToken": "{{ csrf_token }}"
+      },
+      success: function (response) {
+        if (response.success) {
+          $('#rowModal').modal('hide');
+          location.reload();
+        } else {
+          alert("Erreur: " + response.error);
+        }
+      },
+      error: function () {
+        alert("Erreur de soumission.");
+      }
     });
   });
+});
 </script>
+
 {% endblock %}
