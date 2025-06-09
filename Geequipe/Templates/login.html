@@ -113,6 +113,7 @@
     <!-- Formulaire de connexion -->
     <section class="login-form">
       <h2>Se connecter</h2>
+      
       <form action="{% url 'login' %}" method="POST">
 {% csrf_token %}
         {% if messages %}

@@ -75,7 +75,25 @@
           <div class="mb-3"><label>Date de fin</label><input name="date_fin" type="date" class="form-control" id="date_fin" required></div>
           <div class="mb-3"><label>Site</label><input name="site" type="text" class="form-control" id="site" required></div>
           <div class="mb-3"><label>Ville</label><input name="ville" type="text" class="form-control" id="ville" required></div>
-          <div class="mb-3"><label>Pays</label><input name="pays" type="text" class="form-control" id="pays" required></div>
+          <div class="mb-3">
+  <label for="pays">Pays</label>
+  <select name="pays" id="pays" class="form-control" required>
+    <option value="COTE D'IVOIRE">Côte d’Ivoire</option>
+    <option value="BURKINA FASO">Burkina Faso</option>
+    <option value="MALI">Mali</option>
+    <option value="BENIN">Bénin</option>
+    <option value="GUINEE">Guinée</option>
+    <option value="TOGO">Togo</option>
+    <option value="NIGER">Niger</option>
+    <option value="SENEGAL">Sénégal</option>
+    <option value="GABON">Gabon</option>
+    <option value="CAMEROUN">Cameroun</option>
+    <option value="CONGO">Congo</option>
+    <option value="CENTRAFRIQUE">Centrafrique</option>
+    <option value="TCHAD">Tchad</option>
+    <option value="REPUBLIQUE DEMOCRATIQUE DU CONGO">République Démocratique du Congo</option>
+  </select>
+</div>
 
           <div class="mb-3">
             <label>Statut</label>
@@ -97,7 +115,12 @@
 
           <div class="mb-3">
   <label class="form-label">Client</label>
-  <input type="text" class="form-control" id="client_nom" required placeholder="Nom du client">
+  <input type="text" class="form-control" id="client_nom" name="client_nom" list="clientsList" placeholder="Nom du client" required>
+  <datalist id="clientsList">
+    {% for client in clients %}
+      <option value="{{ client.nom }}"></option>
+    {% endfor %}
+  </datalist>
 </div>
 
           
@@ -122,23 +145,40 @@
 <script>
 $(document).ready(function () {
   var table = $('#myTable').DataTable({
-    scrollY: '500px',
-    scrollX: true,
-    scrollCollapse: true,
-    fixedHeader: true,
-    paging: true,
-    dom: 'Bfrtip',
-    language: {
-      emptyTable: "Aucun projet à afficher pour le moment"
-    },
-    buttons: [
-      {
-        extend: 'excelHtml5',
-        text: 'Télécharger Excel',
-        className: 'btn btn-success mb-3'
-      }
-    ]
-  });
+        responsive: true, 
+        scrollY: '500px',
+        scrollX: true,
+        scrollCollapse: true,
+        fixedHeader: true,
+        paging: true,
+        dom: 'Bfrtip',
+        language: {
+            emptyTable: "Aucun projet à afficher pour le moment",
+            info: "Affichage de _START_ à _END_ sur _TOTAL_ entrées",
+            infoEmpty: "Affichage de 0 à 0 sur 0 entrées",
+            infoFiltered: "(filtré à partir de _MAX_ entrées totales)",
+            lengthMenu: "Afficher _MENU_ entrées",
+            loadingRecords: "Chargement...",
+            processing: "Traitement...",
+            search: "Rechercher:",
+            zeroRecords: "Aucun enregistrement correspondant trouvé",
+            paginate: {
+                first: "Premier",
+                last: "Dernier",
+                next: "Suivant",
+                previous: "Précédent"
+            },
+            aria: {
+                sortAscending: ": activer pour trier la colonne par ordre croissant",
+                sortDescending: ": activer pour trier la colonne par ordre décroissant"
+            }
+        },
+        buttons: [{
+            extend: 'excelHtml5',
+            text: 'Télécharger Excel',
+            className: 'btn btn-success mb-3'
+        }]
+    });
 
   // Afficher le formulaire dans le modal
   $('#addRowBtn').click(function () {

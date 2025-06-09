@@ -1,3 +1,4 @@
+
 from django.contrib import admin
 from .models import PaysAffectation, Personnel, ChefProjet, Client, Projet, Equipe, Membre, Competence, Posseder, Activite, Effectuer, Certificat, Realiser, Livrable, Mobilisation, AffectationProjet, Noter, Evaluer, Expatriation
 

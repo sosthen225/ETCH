@@ -1,0 +1,14 @@
+
+{% extends 'index.html' %}
+
+{% block content %}
+<h3>Certificats de {{ agent.nom }} {{ agent.prenoms }}</h3>
+<ul>
+  {% for cert in certificats %}
+    <li>
+      {{ cert.libelle }} - {{ cert.organisme }} -
+      <a href="{{ cert.fichier_pdf.url }}" target="_blank">Télécharger PDF</a>
+    </li>
+  {% endfor %}
+</ul>
+{% endblock %}

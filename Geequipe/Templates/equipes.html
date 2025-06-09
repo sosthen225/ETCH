@@ -1,0 +1,105 @@
+{# templates/equipe_form.html #}
+{% extends 'index.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Créer une Équipe</h2>
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                Informations sur l'équipe
+            </div>
+            <div class="card-body">
+                {{ equipe_form.non_field_errors }}
+                {% for field in equipe_form %}
+                    <div class="mb-3">
+                        <label class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.errors %}
+                            <div class="text-danger">{{ field.errors }}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-secondary text-white">
+                Membres de l'équipe (3 à 5)
+            </div>
+            <div class="card-body">
+                {{ formset.management_form }}
+                {% for form in formset %}
+                    <div class="border rounded p-3 mb-3">
+                        {% for field in form.visible_fields %}
+                            <div class="mb-3">
+                                <label class="form-label">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.errors %}
+                                    <div class="text-danger">{{ field.errors }}</div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                        {% if form.non_field_errors %}
+                            <div class="text-danger">{{ form.non_field_errors }}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <a href="{% url 'liste_equipes' %}" class="btn btn-outline-secondary">Annuler</a>
+            <button type="submit" class="btn btn-success">Enregistrer l'équipe</button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const selects = document.querySelectorAll('select[name$="-personnel"]');
+
+    function getAllSelectedValues() {
+        return Array.from(selects)
+            .map(select => select.value)
+            .filter(val => val !== "");
+    }
+
+    function updateSelectOptions() {
+        const selectedValues = getAllSelectedValues();
+
+        selects.forEach(currentSelect => {
+            const currentValue = currentSelect.value;
+
+            const allOptions = Array.from(currentSelect.querySelectorAll('option'));
+
+            allOptions.forEach(option => {
+                // Toujours laisser la première option vide
+                if (option.value === "") return;
+
+                // Réafficher tout d'abord
+                option.hidden = false;
+
+                // Cacher si sélectionnée ailleurs
+                if (
+                    selectedValues.includes(option.value) &&
+                    option.value !== currentValue
+                ) {
+                    option.hidden = true;
+                }
+            });
+        });
+    }
+
+    selects.forEach(select => {
+        select.addEventListener('change', updateSelectOptions);
+    });
+
+    updateSelectOptions(); // Initial
+});
+</script>
+
+{% endblock %}

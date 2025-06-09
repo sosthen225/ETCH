@@ -1,0 +1,113 @@
+{% extends 'index.html' %}
+
+{% block content %}
+
+<form action="{% url 'modifier_agent' agent.id %}" method="POST" enctype="multipart/form-data">
+  {% csrf_token %}
+
+  <h3>Modifier l'agent : {{ agent.nom }} {{ agent.prenoms }}</h3>
+
+  <input type="hidden" name="agent_id" value="{{ agent.id }}">
+
+  <div class="form-group">
+    <label>Nom :</label>
+    <input type="text" name="nom" value="{{ agent.nom }}" class="form-control" required>
+  </div>
+
+  <div class="form-group">
+    <label>Prénoms :</label>
+    <input type="text" name="prenoms" value="{{ agent.prenoms }}" class="form-control" required>
+  </div>
+
+  <div class="form-group">
+    <label>Email :</label>
+    <input type="email" name="email" value="{{ agent.email }}" class="form-control">
+  </div>
+
+  <div class="form-group">
+    <label>Téléphone :</label>
+    <input type="text" name="telephone" value="{{ agent.telephone }}" class="form-control">
+  </div>
+
+  <div class="form-group">
+    <label>Nationalité :</label>
+    <input type="text" name="nationalite" value="{{ agent.nationalite }}" class="form-control">
+  </div>
+
+  <div class="form-group">
+    <label>Statut :</label>
+    <select name="statut" class="form-control" required>
+      <option value="Disponible" {% if agent.statut == "Disponible" %}selected{% endif %}>Disponible</option>
+      <option value="Occupé" {% if agent.statut == "Occupé" %}selected{% endif %}>Occupé</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label>Résidence :</label>
+    <input type="text" name="residence" value="{{ agent.residence }}" class="form-control">
+  </div>
+
+  <div class="form-group">
+    <label>Pays d’affectation :</label>
+    <select name="pays_affectation" class="form-control">
+      {% for pays_nom in pays %}
+        <option value="{{ pays_nom }}" {% if pays_nom == agent.pays_affectation %}selected{% endif %}>{{ pays_nom }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label>Compétences :</label>
+    <select name="competences" class="form-control select2" required>
+      {% for c in all_competences %}
+        <option value="{{ c.id }}" {% if c in competences %}selected{% endif %}>{{ c.libelle }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <h4>Certificats</h4>
+  <div id="certificatsContainer">
+    {% for cert in certificats %}
+      <div class="border p-3 mb-2">
+        <input type="hidden" name="certificats[{{ forloop.counter0 }}][id]" value="{{ cert.id }}">
+        <div class="row">
+          <div class="col-md-6">
+            <label>Libellé :</label>
+            <input type="text" name="certificats[{{ forloop.counter0 }}][libelle]" value="{{ cert.libelle }}" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label>Type :</label>
+            <input type="text" name="certificats[{{ forloop.counter0 }}][type]" value="{{ cert.type }}" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label>Date d’obtention :</label>
+            <input type="date" name="certificats[{{ forloop.counter0 }}][obtention]" value="{{ cert.date_obtention }}" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label>Date de validité :</label>
+            <input type="date" name="certificats[{{ forloop.counter0 }}][validite]" value="{{ cert.date_validite }}" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label>Statut :</label>
+            <select name="certificats[{{ forloop.counter0 }}][statut]" class="form-control">
+              <option value="a_jour" {% if cert.statut == "a_jour" %}selected{% endif %}>À jour</option>
+              <option value="expire" {% if cert.statut == "expire" %}selected{% endif %}>Expiré</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label>Organisme :</label>
+            <input type="text" name="certificats[{{ forloop.counter0 }}][organisme]" value="{{ cert.organisme }}" class="form-control">
+          </div>
+          <div class="col-md-12">
+            <label>Fichier PDF :</label>
+            <input type="file" name="certificats[{{ forloop.counter0 }}][fichier]" accept="application/pdf" class="form-control">
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <button type="submit" class="btn btn-primary">Enregistrer les modifications</button>
+  <a href="{% url 'tabpersonels' %}" class="btn btn-secondary">Annuler</a>
+</form>
+{% endblock %}

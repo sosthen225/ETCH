@@ -5,18 +5,30 @@ from django.core.exceptions import ValidationError
 # ----------- CONSTANTES POUR LES CHOIX -----------
 
 PAYS_CHOICES = [
-    ('CI', 'Côte d’Ivoire'),
-    ('BF', 'Burkina Faso'),
-    ('ML', 'Mali'),
-    ('SN', 'Sénégal'),
-    ('GN', 'Guinée'),
+    ("COTE D'IVOIRE", "COTE D'IVOIRE"),
+    ('BURKINA FASO', 'BURKINA FASO'),
+    ('MALI', 'MALI'),
+    ('BENIN', 'BENIN'),
+    ('GUINEE', 'GUINEE'),
+    ('TOGO', 'TOGO'),
+    ('NIGER','NIGER'),
+    ('SENEGAL', 'SENEGAL'),
+    ('GABON', 'GABON'),
+    ('CAMEROUN','CAMEROUN'),
+    ('CONGO', 'CONGO'),
+    ('CENTRAFRIQUE', 'CENTRAFRIQUE'),
+    ('TCHAD', 'TCHAD'),
+    ('REPUBLIQUE DEMOCRATIQUE DU CONGO', 'REPUBLIQUE DEMOCRATIQUE DU CONGO',),
+    
 ]
 
 COMPETENCE_CHOICES = [
     ('RAN', 'RAN'),
     ('CORE', 'CORE'),
     ('DRIVE_TEST', 'DRIVE TEST'),
-    ('AUTRE', 'AUTRE'),
+    ('OPTIMISATION', 'OPTIMISATION'),
+   
+    
 ]
 
 ROLE_CHOICES = [
@@ -37,15 +49,22 @@ class PaysAffectation(models.Model):
 class Personnel(models.Model):
     nom = models.CharField(max_length=100)
     prenoms = models.CharField(max_length=100)
-    email = models.EmailField()
-    telephone = models.CharField(max_length=20)
+    email = models.EmailField(unique=True)
+    telephone = models.CharField(max_length=20,unique=True)
     nationalite = models.CharField(max_length=50)
-    statut = models.CharField(max_length=50, choices=[('actif', 'Actif'), ('inactif', 'Inactif'),('en_mission','En mission'),('en_disponibilité','En disponibilité')], default='actif')
+    statut = models.CharField (max_length=50, choices=[('actif', 'Actif'), ('inactif', 'Inactif'),('en_mission','En mission'),('en_disponibilité','En disponibilité'),('en_congé','En congé')] ,default='actif')
     residence = models.CharField(max_length=100)
 
     def __str__(self):
         return f"{self.prenoms} {self.nom}"
-
+    def get_pays_affectation_actuelle(self):
+        """
+        Retourne le dernier pays d'expatriation (le plus récent).
+        """
+        derniere_expat = self.expatriations.order_by('-date_expatriation').first()
+        return derniere_expat.pays.nom_pays if derniere_expat else "Aucune affectation"
+    
+    
 
 class ChefProjet(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='chef_projet')
@@ -70,7 +89,7 @@ class Projet(models.Model):
     site = models.CharField(max_length=100)
     ville = models.CharField(max_length=100)
     pays = models.CharField(max_length=100)
-    statut = models.CharField(max_length=50, choices=[('en_cours', 'En cours'), ('termine', 'Terminé')], default='en_cours')
+    statut = models.CharField(max_length=50, choices=[('en_cours', 'En cours'), ('termine', 'Terminé'), ('en_attente' , 'En attente'),('suspendu','Suspendu') ], default='en_cours')
     chef_projet = models.ForeignKey(ChefProjet, on_delete=models.CASCADE, related_name='projets')
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='projets')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -86,9 +105,9 @@ class Projet(models.Model):
 
 
 class Equipe(models.Model):
-    nom = models.CharField(max_length=100)
-    date_creation = models.DateField()
-    date_dissolution = models.DateField(null=True, blank=True)
+    nom = models.CharField(max_length=100,unique=True)
+    date_creation = models.DateField(auto_now_add=True)
+   
 
     def __str__(self):
         return self.nom
@@ -158,8 +177,9 @@ class Certificat(models.Model):
     type = models.CharField(max_length=50)
     date_obtention = models.DateField()
     validite = models.DateField()
-    statut= models.CharField(max_length=50)
+    statut= models.CharField(max_length=50, choices=[('à jour', 'A jour'), ('expiré', 'Expiré')] )
     organisme = models.CharField(max_length=100)
+    fichier_pdf = models.FileField(upload_to='certificats/', null=True, blank=True)
 
     def __str__(self):
         return self.libelle
@@ -253,4 +273,4 @@ class Expatriation(models.Model):
     date_expatriation = models.DateField()
 
     def __str__(self):
-        return f"{self.personnel} expatrié en {self.pays}"
+        return f"{self.personnel} expatrié en {self.pays.nom_pays} ({self.date_expatriation})"

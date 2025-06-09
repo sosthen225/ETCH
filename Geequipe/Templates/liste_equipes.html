@@ -1,0 +1,53 @@
+{% extends 'index.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Liste des Équipes</h2>
+        <a href="{% url 'creer_equipe' %}" class="btn btn-primary mb-3">
+            Former une équipe
+        </a>
+    </div>
+
+    <table id="tableEquipes" class="table table-bordered table-hover table-striped">
+        <thead class="thead-dark">
+            <tr>
+                <th>Nom de l'équipe</th>
+                <th>Date de création</th>
+                <th>Membres</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for equipe in equipes %}
+            <tr>
+                <td>{{ equipe.nom }}</td>
+                <td>{{ equipe.date_creation|date:"d/m/Y" }}</td>
+                <td>
+                    <ul class="list-unstyled mb-0">
+                        {% for membre in equipe.membres.all %}
+
+                            <li><strong>{{ membre.personnel.nom }}</strong> – {{ membre.role }}</li>
+                        {% empty %}
+                            <li><em>Aucun membre</em></li>
+                        {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- DataTables init -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        $('#tableEquipes').DataTable({
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json'
+            },
+            pageLength: 10,
+            responsive: true
+        });
+    });
+</script>
+{% endblock %}

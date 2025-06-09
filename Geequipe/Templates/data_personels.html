@@ -1,281 +1,377 @@
 {% extends 'index.html' %}
 
 {% block content %}
-<!-- CSS -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
-<script>
-$(document).ready(function () {
-  // Initialisation Select2
-  $('#competencesSelect').select2({
-    dropdownParent: $('#rowModal'),
-    width: '100%',
-    placeholder: 'Choisir des compétences'
-  });
-
-  // Ajout dynamique de certificats
-  $('#addCertificatBtn').click(function () {
-    $('#certificatsContainer').append(`
-      <div class="card p-2 mb-2 certificat-item border rounded">
-        <div class="mb-2"><label>Libellé</label><input type="text" name="cert_libelle[]" class="form-control" required></div>
-        <div class="mb-2"><label>Type</label><input type="text" name="cert_type[]" class="form-control" required></div>
-        <div class="mb-2"><label>Date d'obtention</label><input type="date" name="cert_obtention[]" class="form-control" required></div>
-        <div class="mb-2"><label>Validité</label><input type="date" name="cert_validite[]" class="form-control" required></div>
-        <div class="mb-2">
-          <label>Statut</label>
-          <select name="cert_statut[]" class="form-control" required>
-            <option value="a_jour">À jour</option>
-            <option value="expire">Expiré</option>
-          </select>
-        </div>
-        <div class="mb-2"><label>Organisme</label><input type="text" name="cert_organisme[]" class="form-control" required></div>
-        <button type="button" class="btn btn-sm btn-danger remove-cert">Supprimer</button>
-      </div>
-    `);
-  });
-
-  // Suppression de certificat
-  $(document).on('click', '.remove-cert', function () {
-    $(this).closest('.certificat-item').remove();
-  });
-
-  // Envoi AJAX
-  $('#rowForm').on('submit', function (e) {
-    e.preventDefault();
-
-    const certificats = [];
-    $('.certificat-item').each(function () {
-      certificats.push({
-        libelle: $(this).find('[name="cert_libelle[]"]').val(),
-        type: $(this).find('[name="cert_type[]"]').val(),
-        date_obtention: $(this).find('[name="cert_obtention[]"]').val(),
-        validite: $(this).find('[name="cert_validite[]"]').val(),
-        statut: $(this).find('[name="cert_statut[]"]').val(),
-        organisme: $(this).find('[name="cert_organisme[]"]').val(),
-      });
-    });
-
-    const data = {
-      nom: $('[name="nom"]').val(),
-      prenoms: $('[name="prenoms"]').val(),
-      email: $('[name="email"]').val(),
-      telephone: $('[name="telephone"]').val(),
-      nationalite: $('[name="nationalite"]').val(),
-      statut: $('[name="statut"]').val(),
-      residence: $('[name="residence"]').val(),
-      pays_affectation: $('[name="pays-affectation"]').val(),
-      competences: $('#competencesSelect').val(),
-      certificats: certificats
-    };
-
-    $.ajax({
-      url: "{% url 'ajouter_personnel' %}",
-      method: "POST",
-      contentType: "application/json",
-      data: JSON.stringify(data),
-      headers: {
-        "X-CSRFToken": "{{ csrf_token }}",
-      },
-      success: function (response) {
-        if (response.success) {
-          $('#rowModal').modal('hide');
-          location.reload();
-        } else {
-          alert("Erreur: " + response.error);
-        }
-      },
-      error: function () {
-        alert("Erreur de soumission.");
-      }
-    });
-  });
-});
-</script>
-
 <div class="container mt-5">
-  <button class="btn btn-primary mb-3" id="addRowBtn">Ajouter un nouvel agent</button>
-  <table id="myTable" class="display nowrap table table-bordered" style="width:100%">
-    <thead>
-      <tr>
-        <th>Nom</th>
-        <th>Prénoms</th>
-        <th>Email</th>
-        <th>Téléphone</th>
-        <th>Nationalité</th>
-        <th>Statut</th>
-        <th>Résidence</th>
-        <th>Pays d'affectation</th>
-        <th>Compétences</th>
-        <th>Certificats</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for agent in personnel %}
-      <tr data-id="{{ agent.id }}">
-        <td>{{ agent.nom }}</td>
-        <td>{{ agent.prenoms }}</td>
-        <td>{{ agent.email }}</td>
-        <td>{{ agent.telephone }}</td>
-        <td>{{ agent.nationalite }}</td>
-        <td>{{ agent.get_statut_display }}</td>
-        <td>{{ agent.residence }}</td>
-        <td>
-          {% for expat in agent.expatriations.all %}
-            {{ expat.pays.get_nom_pays_display }}{% if not forloop.last %}, {% endif %}
-          {% endfor %}
-        </td>
-        <td>
-          {% for possede in agent.competences_possedees.all %}
-            {{ possede.competence }}{% if not forloop.last %}, {% endif %}
-          {% endfor %}
-        </td>
-        <td>
-          {% for certif in agent.certificats.all %}
-            {{ certif.libelle }} ({{ certif.organisme }})<br>
-          {% endfor %}
-        </td>
-        <td>
-          <a href="#" class="btn btn-warning btn-sm">Modifier</a>
-          <form action="{% url 'supprimer_personnel' agent.id %}" method="post" style="display:inline;">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Confirmer la suppression ?')">Supprimer</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+    <button class="btn btn-primary mb-3" id="addRowBtn">Ajouter un nouvel agent</button>
+    <table id="myTable" class="display nowrap table table-bordered" style="width:100%">
+        <thead>
+            <tr>
+                <th>Nom</th>
+                <th>Prénoms</th>
+                <th>Email</th>
+                <th>Téléphone</th>
+                <th>Nationalité</th>
+                <th>Statut</th>
+                <th>Résidence</th>
+                <th>Pays d'affectation</th>
+                <th>Compétences</th>
+                <th>Certificats</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for agent in agents %}
+            <tr data-id="{{ agent.id }}">
+                <td>{{ agent.nom }}</td>
+                <td>{{ agent.prenoms }}</td>
+                <td>{{ agent.email }}</td>
+                <td>{{ agent.telephone }}</td>
+                <td>{{ agent.nationalite }}</td>
+                <td>{{ agent.get_statut_display }}</td>
+                <td>{{ agent.residence }}</td>
+                <td>{{ agent.get_pays_affectation_actuelle }}</td>
+                <td>
+                    {% for possede in agent.competences_possedees.all %}
+                        {{ possede.competence.nom }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </td>
+                <td>
+                    <a href="{% url 'voir_certificats' agent.id %}" class="btn btn-info btn-sm">Voir</a>
+                </td>
+                <td>
+                    <a href="{% url 'modifier_agent' agent.id %}" class="btn btn-warning btn-sm eit-btn" data-id="{{ agent.id }}">Modifier</a>
+                    <button class="btn btn-danger btn-sm delete-btn" data-id="{{ agent.id }}">Supprimer</button>
+
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 
-<!-- MODAL -->
 <div class="modal fade" id="rowModal" tabindex="-1" aria-labelledby="rowModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <form id="rowForm">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="rowModalLabel">Nouvel Agent</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-  <div class="mb-3"><label>Nom</label><input name="nom" type="text" class="form-control" required></div>
-  <div class="mb-3"><label>Prénoms</label><input name="prenoms" type="text" class="form-control" required></div>
-  <div class="mb-3"><label>Email</label><input name="email" type="email" class="form-control" required></div>
-  <div class="mb-3"><label>Téléphone</label><input name="telephone" type="text" class="form-control" required></div>
-  <div class="mb-3"><label>Nationalité</label><input name="nationalite" type="text" class="form-control" required></div>
-  <div class="mb-3">
-    <label>Statut</label>
-    <select class="form-control" name="statut" required>
-      <option value="actif">Actif</option>
-      <option value="inactif">Inactif</option>
-      <option value="en_mission">En mission</option>
-      <option value="en_disponibilité">En disponibilité</option>
-    </select>
-  </div>
-  <div class="mb-3"><label>Résidence</label><input name="residence" type="text" class="form-control" required></div>
-  <div class="mb-3"><label>Pays d'affectation</label><input name="pays-affectation" type="text" class="form-control" required></div>
+    <div class="modal-dialog modal-lg">
+        <form id="rowForm" enctype="multipart/form-data"> {# Important: enctype pour les téléchargements de fichiers #}
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="rowModalLabel">Nouvel Agent</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3"><label>Nom</label><input name="nom" type="text" class="form-control" required></div>
+                        <div class="col-md-6 mb-3"><label>Prénoms</label><input name="prenoms" type="text" class="form-control" required></div>
+                        <div class="col-md-6 mb-3"><label>Email</label><input name="email" type="email" class="form-control" required></div>
+                        <div class="col-md-6 mb-3"><label>Téléphone</label><input name="telephone" type="text" class="form-control" required></div>
+                        <div class="col-md-6 mb-3"><label>Nationalité</label><input name="nationalite" type="text" class="form-control" required></div>
+                        <div class="col-md-6 mb-3">
+                            <label>Statut</label>
+                            <select class="form-control" name="statut" required>
+                                <option value="actif">Actif</option>
+                                <option value="inactif">Inactif</option>
+                                <option value="en_mission">En mission</option>
+                                <option value="en_disponibilite">En disponibilité</option>
+                                <option value="en_conge">En congé</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3"><label>Résidence</label><input name="residence" type="text" class="form-control" required></div>
+                        <div class="col-md-6 mb-3">
+                            <label>Pays d'affectation</label>
+                            <select name="pays_affectation" class="form-control" required>
+                                {% for code, label in pays_liste %}
+                                <option value="{{ code }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-12 mb-3">
+                            <label>Spécialité</label>
+                            <select name="competences" id="competence-select" class="form-control">
 
-  <!-- Compétences multiselect -->
-  <div class="mb-3">
-    <label>Compétences</label>
-    <select name="competences" class="form-control" id="competencesSelect" multiple="multiple" required>
-      {% for c in competences %}
-        <option value="{{ c.id }}">{{ c.nom }}</option>
-      {% endfor %}
-    </select>
-  </div>
+                                {% for code, label in competences %}
+                                <option value="{{ code }}">{{ label }}</option>
+                                {% endfor %}
+                              
 
-  <!-- Certificats dynamiques -->
-  <div class="mb-3">
-    <label>Certificats</label>
-    <div id="certificatsContainer"></div>
-    <button type="button" class="btn btn-secondary btn-sm mt-2" id="addCertificatBtn">+ Ajouter un certificat</button>
-  </div>
+                            </select>
+                           
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label class="form-label">Certificats</label>
+                            <button type="button" class="btn btn-secondary btn-sm" id="addCertificatBtn">+ Ajouter un certificat</button>
+                        </div>
+                        <div id="certificatsContainer" class="mt-2">
+                            </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                    <button type="submit" class="btn btn-success">Enregistrer</button>
+                </div>
+            </div>
+        </form>
+    </div>
 </div>
 
-        <div class="modal-footer">
-          <input type="hidden" id="rowIndex">
-          <button type="submit" class="btn btn-success">Enregistrer</button>
-        </div>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- JS -->
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
 
-
 <script>
 $(document).ready(function () {
-  var table = $('#myTable').DataTable({
-    scrollY: '500px',
-    scrollX: true,
-    scrollCollapse: true,
-    fixedHeader: true,
-    paging: true,
-    dom: 'Bfrtip',
-    language: {
-      emptyTable: "Aucun agent à afficher pour le moment"
-    },
-    buttons: [{
-      extend: 'excelHtml5',
-      text: 'Télécharger Excel',
-      className: 'btn btn-success mb-3'
-    }]
-  });
-
-  $('#addRowBtn').click(function () {
-    $('#rowForm')[0].reset();
-    $('#rowModalLabel').text('Ajouter un nouvel agent');
-    $('#rowModal').modal('show');
-  });
-
-  $('#rowForm').on('submit', function (e) {
-    e.preventDefault();
-    const data = {
-      nom: $('[name="nom"]').val(),
-      prenoms: $('[name="prenoms"]').val(),
-      email: $('[name="email"]').val(),
-      telephone: $('[name="telephone"]').val(),
-      nationalite: $('[name="nationalite"]').val(),
-      statut: $('[name="statut"]').val(),
-      residence: $('[name="residence"]').val(),
-      pays_affectation: $('[name="pays-affectation"]').val(),
-     competences: $('[name="competences"]').val(),
-     certificats: $('[name="Certificats"]').val()
-    };
-
-    $.ajax({
-      url: "{% url 'ajouter_personnel' %}",
-      method: "POST",
-      contentType: "application/json",
-      data: JSON.stringify(data),
-      headers: {
-        "X-CSRFToken": "{{ csrf_token }}"
-      },
-      success: function (response) {
-        if (response.success) {
-          $('#rowModal').modal('hide');
-          location.reload();
-        } else {
-          alert("Erreur: " + response.error);
-        }
-      },
-      error: function () {
-        alert("Erreur de soumission.");
-      }
+    // Initialisation de DataTables
+    $('#myTable').DataTable({
+        scrollY: '500px',
+        scrollX: true,
+        scrollCollapse: true,
+        fixedHeader: true,
+        paging: true,
+        dom: 'Bfrtip',
+        language: {
+            emptyTable: "Aucun agent à afficher pour le moment",
+            info: "Affichage de _START_ à _END_ sur _TOTAL_ entrées",
+            infoEmpty: "Affichage de 0 à 0 sur 0 entrées",
+            infoFiltered: "(filtré à partir de _MAX_ entrées totales)",
+            lengthMenu: "Afficher _MENU_ entrées",
+            loadingRecords: "Chargement...",
+            processing: "Traitement...",
+            search: "Rechercher:",
+            zeroRecords: "Aucun enregistrement correspondant trouvé",
+            paginate: {
+                first: "Premier",
+                last: "Dernier",
+                next: "Suivant",
+                previous: "Précédent"
+            },
+            aria: {
+                sortAscending: ": activer pour trier la colonne par ordre croissant",
+                sortDescending: ": activer pour trier la colonne par ordre décroissant"
+            }
+        },
+        buttons: [{
+            extend: 'excelHtml5',
+            text: 'Télécharger Excel',
+            className: 'btn btn-success mb-3'
+        }]
     });
-  });
+
+    // Initialisation de Select2 pour les compétences
+    $('#competence-select').select2({
+        dropdownParent: $('#rowModal'), // Important pour que le dropdown s'affiche dans le modal
+        width: '100%',
+        placeholder: 'Sélectionnez la spécialité',
+        allowClear: true 
+    });
+
+    // Compteur pour des noms uniques pour les champs de certificat ajoutés dynamiquement
+    let certificatCount = 0;
+
+    // Ouvrir le modal pour ajouter un nouvel agent
+    $('#addRowBtn').click(function () {
+        $('#rowForm')[0].reset(); 
+        $('#competence-select').val(null).trigger('change'); 
+        $('#certificatsContainer').empty(); 
+        $('#rowModalLabel').text('Ajouter un nouvel agent');
+        certificatCount = 0; 
+        $('#rowModal').modal('show');
+    });
+
+    // Ajout dynamique de certificats
+    $('#addCertificatBtn').click(function () {
+        certificatCount++; 
+        // Utilisation de `certificats[${certificatCount}]` pour envoyer les données comme un tableau d'objets à Django
+        $('#certificatsContainer').append(`
+            <div class="card p-3 mb-2 certificat-item border rounded position-relative">
+                <button type="button" class="btn-close position-absolute top-0 end-0 p-2 remove-cert" aria-label="Supprimer"></button>
+                <div class="row">
+                    <div class="col-md-6 mb-2"><label>Libellé</label><input type="text" name="certificats[${certificatCount}][libelle]" class="form-control" required></div>
+                    <div class="col-md-6 mb-2"><label>Type</label><input type="text" name="certificats[${certificatCount}][type]" class="form-control" required></div>
+                    <div class="col-md-6 mb-2"><label>Date d'obtention</label><input type="date" name="certificats[${certificatCount}][obtention]" class="form-control" required></div>
+                    <div class="col-md-6 mb-2"><label>Date de validité</label><input type="date" name="certificats[${certificatCount}][validite]" class="form-control" required></div>
+                    <div class="col-md-6 mb-2">
+                        <label>Statut</label>
+                        <select name="certificats[${certificatCount}][statut]" class="form-control" required>
+                            <option value="a_jour">À jour</option>
+                            <option value="expire">Expiré</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-2"><label>Organisme</label><input type="text" name="certificats[${certificatCount}][organisme]" class="form-control" required></div>
+                    <div class="col-md-12 mb-2"><label>Fichier PDF</label><input type="file" name="certificats[${certificatCount}][fichier]" accept="application/pdf" class="form-control" required></div>
+                </div>
+            </div>
+        `);
+    });
+
+    // Suppression de certificat
+    $('#certificatsContainer').on('click', '.remove-cert', function() {
+        $(this).closest('.certificat-item').remove();
+    });
+
+    // Soumission du formulaire principal
+    $('#rowForm').on('submit', function (e) {
+        e.preventDefault(); 
+
+        let formData = new FormData(this);
+
+        const selectedCompetence = $('#competence-select').val();
+        formData.delete('competence');
+        if (selectedCompetence) {
+            
+                formData.append('competence', selectedCompetence);
+            
+        }
+
+        $.ajax({
+            url: "{% url 'enregistrer_agent' %}", 
+            method: "POST",
+            data: formData,
+            processData: false, 
+            contentType: false, 
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}" 
+            },
+            success: function (response) {
+                if (response.success) {
+                    $('#rowModal').modal('hide');
+                    location.reload(); 
+                } else {
+                    let errorMessages = [];
+                    for (const field in response.errors) {
+                        if (Array.isArray(response.errors[field])) {
+                            errorMessages.push(`${field}: ${response.errors[field].join(', ')}`);
+                        } else {
+                            errorMessages.push(`${field}: ${response.errors[field]}`);
+                        }
+                    }
+                    alert("Erreur lors de l'enregistrement:\n" + errorMessages.join('\n'));
+                }
+            },
+            error: function (xhr, status, error) {
+                alert("Une erreur inattendue est survenue lors de la soumission du formulaire. Veuillez réessayer.");
+                console.error("AJAX Error:", status, error, xhr.responseText);
+                try {
+                    let responseJson = JSON.parse(xhr.responseText);
+                    console.error("Réponse du serveur:", responseJson);
+                    if (responseJson.errors) {
+                         let serverErrors = [];
+                         for (const field in responseJson.errors) {
+                            serverErrors.push(`${field}: ${responseJson.errors[field].join(', ')}`);
+                         }
+                         alert("Erreur du serveur:\n" + serverErrors.join('\n'));
+                    }
+                } catch (e) {
+                    console.error("Impossible de parser la réponse du serveur en JSON.");
+                }
+            }
+        });
+    });
+
+    // Gérer la suppression d'un agent  
+    $('#myTable').on('click', '.delete-btn', function () {
+    const agentId = $(this).data('id');
+    if (confirm("Confirmer la suppression ?")) {
+        $.ajax({
+            url: `/agents/supprimer/${agentId}/`,
+            type: "POST",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}"
+            },
+            success: function (response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert("Erreur lors de la suppression.");
+                }
+            },
+            error: function () {
+                alert("Une erreur est survenue.");
+            }
+        });
+    }
+});
+
+
+
+
+    // Gérer l'édition d'un agent
+    $('#myTable').on('click', '.edit-btn', function(e) {
+        e.preventDefault();
+        const agentId = $(this).data('id');
+        
+        $('#rowForm')[0].reset();
+        $('#certificatsContainer').empty();
+        certificatCount = 0; 
+        $('#rowModalLabel').text('Modifier l\'agent');
+
+        $.ajax({
+            url: `/api/agents/${agentId}/`, 
+            method: "GET",
+            success: function(agentData) {
+                $('input[name="nom"]').val(agentData.nom);
+                $('input[name="prenoms"]').val(agentData.prenoms);
+                $('input[name="email"]').val(agentData.email);
+                $('input[name="telephone"]').val(agentData.telephone);
+                $('input[name="nationalite"]').val(agentData.nationalite);
+                $('select[name="statut"]').val(agentData.statut);
+                $('input[name="residence"]').val(agentData.residence);
+                $('select[name="pays_affectation"]').val(agentData.pays_affectation_actuelle); 
+                
+                const agentCompetenceIds = agentData.competences.map(c => c.id || c); 
+                $('#competence-select').val(agentCompetenceIds).trigger('change');
+
+                if (agentData.certificats && agentData.certificats.length > 0) {
+                    agentData.certificats.forEach(function(cert) {
+                        certificatCount++; 
+                        $('#certificatsContainer').append(`
+                            <div class="card p-3 mb-2 certificat-item border rounded position-relative">
+                                <button type="button" class="btn-close position-absolute top-0 end-0 p-2 remove-cert" aria-label="Supprimer"></button>
+                                <input type="hidden" name="certificats[${certificatCount}][id]" value="${cert.id || ''}"> 
+                                <div class="row">
+                                    <div class="col-md-6 mb-2"><label>Libellé</label><input type="text" name="certificats[${certificatCount}][libelle]" class="form-control" value="${cert.libelle || ''}" required></div>
+                                    <div class="col-md-6 mb-2"><label>Type</label><input type="text" name="certificats[${certificatCount}][type]" class="form-control" value="${cert.type || ''}" required></div>
+                                    <div class="col-md-6 mb-2"><label>Date d'obtention</label><input type="date" name="certificats[${certificatCount}][obtention]" class="form-control" value="${cert.date_obtention || ''}" required></div>
+                                    <div class="col-md-6 mb-2"><label>Date de validité</label><input type="date" name="certificats[${certificatCount}][validite]" class="form-control" value="${cert.date_validite || ''}" required></div>
+                                    <div class="col-md-6 mb-2">
+                                        <label>Statut</label>
+                                        <select name="certificats[${certificatCount}][statut]" class="form-control" required>
+                                            <option value="a_jour" ${cert.statut === 'a_jour' ? 'selected' : ''}>À jour</option>
+                                            <option value="expire" ${cert.statut === 'expire' ? 'selected' : ''}>Expiré</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-2"><label>Organisme</label><input type="text" name="certificats[${certificatCount}][organisme]" class="form-control" value="${cert.organisme || ''}" required></div>
+                                    <div class="col-md-12 mb-2">
+                                        <label>Fichier PDF</label>
+                                        <input type="file" name="certificats[${certificatCount}][fichier]" accept="application/pdf" class="form-control">
+                                        ${cert.fichier_url ? `<small class="d-block mt-1">Fichier actuel: <a href="${cert.fichier_url}" target="_blank">Voir le PDF</a></small>` : ''}
+                                        <small class="form-text text-muted">Laisser vide pour conserver le fichier actuel. Sélectionner un fichier pour le remplacer.</small>
+                                    </div>
+                                </div>
+                            </div>
+                        `);
+                    });
+                }
+
+                $('#rowForm').attr('action', `/api/agents/${agentId}/update/`); 
+                $('#rowForm').data('agent-id', agentId); 
+
+                $('#rowModal').modal('show');
+            },
+            error: function(xhr, status, error) {
+                alert("Erreur lors de la récupération des données de l'agent pour modification. Veuillez vérifier l'ID ou l'API.");
+                console.error("AJAX Error (Edit Data Fetch):", status, error, xhr.responseText);
+            }
+        });
+    });
 });
 </script>
+
 
 {% endblock %}
