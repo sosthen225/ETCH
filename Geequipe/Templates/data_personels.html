@@ -35,14 +35,14 @@
                 <td>{{ agent.get_pays_affectation_actuelle }}</td>
                 <td>
                     {% for possede in agent.competences_possedees.all %}
-                        {{ possede.competence.nom }}{% if not forloop.last %}, {% endif %}
+                        {{ possede.competence.libelle }}{% if not forloop.last %}, {% endif %}
                     {% endfor %}
                 </td>
                 <td>
                     <a href="{% url 'voir_certificats' agent.id %}" class="btn btn-info btn-sm">Voir</a>
                 </td>
                 <td>
-                    <a href="{% url 'modifier_agent' agent.id %}" class="btn btn-warning btn-sm eit-btn" data-id="{{ agent.id }}">Modifier</a>
+                    <a href="{% url 'modifier_agent' agent.id %}" class="btn btn-warning btn-sm edit-btn" data-id="{{ agent.id }}">Modifier</a>
                     <button class="btn btn-danger btn-sm delete-btn" data-id="{{ agent.id }}">Supprimer</button>
 
                 </td>
@@ -89,7 +89,7 @@
                         </div>
                         <div class="col-md-12 mb-3">
                             <label>Spécialité</label>
-                            <select name="competences" id="competence-select" class="form-control">
+                            <select name="competence" id="competence-select" class="form-control">
 
                                 {% for code, label in competences %}
                                 <option value="{{ code }}">{{ label }}</option>
@@ -196,13 +196,7 @@ $(document).ready(function () {
                     <div class="col-md-6 mb-2"><label>Type</label><input type="text" name="certificats[${certificatCount}][type]" class="form-control" required></div>
                     <div class="col-md-6 mb-2"><label>Date d'obtention</label><input type="date" name="certificats[${certificatCount}][obtention]" class="form-control" required></div>
                     <div class="col-md-6 mb-2"><label>Date de validité</label><input type="date" name="certificats[${certificatCount}][validite]" class="form-control" required></div>
-                    <div class="col-md-6 mb-2">
-                        <label>Statut</label>
-                        <select name="certificats[${certificatCount}][statut]" class="form-control" required>
-                            <option value="a_jour">À jour</option>
-                            <option value="expire">Expiré</option>
-                        </select>
-                    </div>
+                    
                     <div class="col-md-6 mb-2"><label>Organisme</label><input type="text" name="certificats[${certificatCount}][organisme]" class="form-control" required></div>
                     <div class="col-md-12 mb-2"><label>Fichier PDF</label><input type="file" name="certificats[${certificatCount}][fichier]" accept="application/pdf" class="form-control" required></div>
                 </div>
@@ -274,6 +268,11 @@ $(document).ready(function () {
         });
     });
 
+
+
+
+
+
     // Gérer la suppression d'un agent  
     $('#myTable').on('click', '.delete-btn', function () {
     const agentId = $(this).data('id');
@@ -339,13 +338,7 @@ $(document).ready(function () {
                                     <div class="col-md-6 mb-2"><label>Type</label><input type="text" name="certificats[${certificatCount}][type]" class="form-control" value="${cert.type || ''}" required></div>
                                     <div class="col-md-6 mb-2"><label>Date d'obtention</label><input type="date" name="certificats[${certificatCount}][obtention]" class="form-control" value="${cert.date_obtention || ''}" required></div>
                                     <div class="col-md-6 mb-2"><label>Date de validité</label><input type="date" name="certificats[${certificatCount}][validite]" class="form-control" value="${cert.date_validite || ''}" required></div>
-                                    <div class="col-md-6 mb-2">
-                                        <label>Statut</label>
-                                        <select name="certificats[${certificatCount}][statut]" class="form-control" required>
-                                            <option value="a_jour" ${cert.statut === 'a_jour' ? 'selected' : ''}>À jour</option>
-                                            <option value="expire" ${cert.statut === 'expire' ? 'selected' : ''}>Expiré</option>
-                                        </select>
-                                    </div>
+                                    
                                     <div class="col-md-6 mb-2"><label>Organisme</label><input type="text" name="certificats[${certificatCount}][organisme]" class="form-control" value="${cert.organisme || ''}" required></div>
                                     <div class="col-md-12 mb-2">
                                         <label>Fichier PDF</label>

@@ -1,7 +1,8 @@
 from django.urls import include, path, reverse_lazy
+from ETCH import settings
 from Geequipe.views import ajouter_projet, creer_equipe, enregistrer_agent, get_competences_certificats, index, liste_equipes, login_page, logout_view, modifier_agent, modifier_projet, projet_json, supprimer_agent, supprimer_projet, tabpersonels, tabprojet, voir_certificats
 from django.contrib.auth import views as auth_views
-
+from django.conf.urls.static import static
 
 
 
@@ -21,7 +22,7 @@ urlpatterns = [
 
    #path('api/competences-certificats/',get_competences_certificats, name='get_competences_certificats'),
     path('api/enregistrer-agent/', enregistrer_agent, name='enregistrer_agent'),
-    path('modifier_agent/<int:id>/', modifier_agent, name='modifier_agent'),
+    path('modifier_agent/<int:agent_id>/', modifier_agent, name='modifier_agent'),
     path('agents/supprimer/<int:agent_id>/',supprimer_agent, name='supprimer_agent'),
     
 

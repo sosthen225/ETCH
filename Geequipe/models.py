@@ -1,6 +1,9 @@
+from datetime import timezone
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.utils import timezone
+
 
 # ----------- CONSTANTES POUR LES CHOIX -----------
 
@@ -177,9 +180,21 @@ class Certificat(models.Model):
     type = models.CharField(max_length=50)
     date_obtention = models.DateField()
     validite = models.DateField()
-    statut= models.CharField(max_length=50, choices=[('à jour', 'A jour'), ('expiré', 'Expiré')] )
     organisme = models.CharField(max_length=100)
     fichier_pdf = models.FileField(upload_to='certificats/', null=True, blank=True)
+
+
+    @property
+    def statut(self):
+        aujourdhui = timezone.now().date()
+        if self.validite < aujourdhui:
+            return 'expire'
+        elif self.validite == aujourdhui:
+            return 'expire_aujourdhui'  # Optionnel : statut spécifique pour "expire aujourd'hui"
+        elif (self.validite - aujourdhui).days <= 30:  # Validité dans les 30 jours
+            return 'bientot_expire'
+        else:
+            return 'a_jour'
 
     def __str__(self):
         return self.libelle

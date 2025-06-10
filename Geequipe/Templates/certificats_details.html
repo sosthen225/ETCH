@@ -1,14 +1,55 @@
-
 {% extends 'index.html' %}
 
 {% block content %}
-<h3>Certificats de {{ agent.nom }} {{ agent.prenoms }}</h3>
-<ul>
-  {% for cert in certificats %}
-    <li>
-      {{ cert.libelle }} - {{ cert.organisme }} -
-      <a href="{{ cert.fichier_pdf.url }}" target="_blank">Télécharger PDF</a>
-    </li>
-  {% endfor %}
-</ul>
+<div class="container mt-4">
+  <h3 class="mb-4">📜 Certificats de <strong>{{ agent.nom }} {{ agent.prenoms }}</strong></h3>
+
+  <div class="row">
+    {% for cert in certificats %}
+      <div class="col-md-6 mb-4">
+        <div class="card shadow-sm border-start border-4 
+          {% if cert.statut == 'a_jour' %}border-success
+          {% elif cert.statut == 'bientot_expire' %}border-warning
+          {% elif cert.statut == 'expire_aujourdhui' %}border-danger
+          {% else %}border-danger{% endif %}"> {# Statut 'expire' ou autre par défaut en rouge #}
+          <div class="card-body">
+            <h5 class="card-title text-primary">{{ cert.libelle }}</h5>
+            <p class="card-text mb-1"><strong>Organisme :</strong> {{ cert.organisme }}</p>
+            <p class="card-text mb-1">
+              <strong>Statut :</strong> 
+              <span class="badge 
+                {% if cert.statut == 'a_jour' %}bg-success
+                {% elif cert.statut == 'bientot_expire' %}bg-warning
+                {% elif cert.statut == 'expire_aujourdhui' %}bg-danger
+                {% else %}bg-danger{% endif %}"> {# Statut 'expire' ou autre par défaut en rouge #}
+                {% if cert.statut == 'a_jour' %}À jour
+                {% elif cert.statut == 'bientot_expire' %}Bientôt expiré
+                {% elif cert.statut == 'expire_aujourdhui' %}Expire aujourd'hui
+                {% else %}Expiré{% endif %}
+                 <p><strong>Validité :</strong> {{ cert.validite }}</p>
+                
+              </span>
+            </p>
+            {% if cert.fichier_pdf %}
+            <a href="{{ cert.fichier_pdf.url }}" target="_blank" class="btn btn-outline-primary btn-sm mt-2">
+              📄 Voir le certificat
+            </a>
+            {% else %}
+            <span class="text-muted d-block mt-2"><small>Pas de PDF disponible</small></span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% empty %} {# Si la liste de certificats est vide #}
+      <div class="col-12">
+        <div class="alert alert-info text-center" role="alert">
+          Aucun certificat n'a été trouvé pour cet agent.
+        </div>
+      </div>
+      
+    {% endfor %}
+  </div>
+ 
+
+</div>
 {% endblock %}

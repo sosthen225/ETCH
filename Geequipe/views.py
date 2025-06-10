@@ -244,16 +244,23 @@ def get_competences_certificats(request):
 
 
 
-
+from django.utils import timezone
 def voir_certificats(request, personnel_id):
     agent = get_object_or_404(Personnel, id=personnel_id)
     certificats = agent.certificats.all()
-    return render(request, 'certificats_details.html', {'agent': agent, 'certificats': certificats})
+    aujourd_hui = timezone.now().date()
+    return render(request, 'certificats_details.html', {'agent': agent, 'certificats': certificats , 'aujourd_hui': aujourd_hui})
 
 
 
 
-
+def parse_date(date_str):
+    if not date_str:
+        return None
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return None
 @csrf_exempt
 @transaction.atomic
 def enregistrer_agent(request):
@@ -271,7 +278,7 @@ def enregistrer_agent(request):
             residence = request.POST.get('residence')
             pays_affectation = request.POST.get('pays_affectation')
             libelle_competence = request.POST.get('competences')
-            autre_competence = request.POST.get('autre_competence')
+           
 
             # Création du personnel
             personnel = Personnel.objects.create(
@@ -294,14 +301,12 @@ def enregistrer_agent(request):
                     date_expatriation=parse_date(request.POST.get('date_expatriation')) or timezone.now().date()
                 )
 
-            # 3. Gestion de la compétence (avec "AUTRE")
+            
             if libelle_competence:
-                if libelle_competence == 'AUTRE':
-                    competence, _ = Competence.objects.get_or_create(libelle='AUTRE', autre=autre_competence)
-                else:
+                
                     competence, _ = Competence.objects.get_or_create(libelle=libelle_competence)
 
-                Posseder.objects.create(personnel=personnel, competence=competence)
+                    Posseder.objects.create(personnel=personnel, competence=competence)
 
             # 4. Gestion des certificats dynamiques
             certificats = [key.split('[')[1].split(']')[0] for key in request.POST if key.startswith('certificats[')]
@@ -313,19 +318,17 @@ def enregistrer_agent(request):
                 type_cert = request.POST.get(f'{prefix}[type]')
                 obtention = parse_date(request.POST.get(f'{prefix}[obtention]'))
                 validite = parse_date(request.POST.get(f'{prefix}[validite]'))
-                statut_cert = request.POST.get(f'{prefix}[statut]')
                 organisme = request.POST.get(f'{prefix}[organisme]')
                 fichier = request.FILES.get(f'{prefix}[fichier]')
                 # Vérification des champs requis
-                print(f"Traitement du certificat {cert_id}: {libelle}, {type_cert}, {obtention}, {validite}, {statut_cert}, {organisme}")
-            if all([libelle, type_cert, obtention, validite, statut_cert, organisme]):
+                print(f"Traitement du certificat {cert_id}: {libelle}, {type_cert}, {obtention}, {validite}, {organisme}")
+            if all([libelle, type_cert, obtention, validite, organisme]):
                 Certificat.objects.create(
                     personnel=personnel,
                     libelle=libelle,
                     type=type_cert,
                     date_obtention=obtention,
                     validite=validite,
-                    statut=statut_cert,
                     organisme=organisme,
                     fichier_pdf=fichier
                 )
@@ -340,37 +343,6 @@ def enregistrer_agent(request):
 
 
 
-
-
-# def modifier_agent(request, agent_id):
-#     agent = get_object_or_404(Personnel, id=agent_id)
-#     competences_ids = list(agent.competences_possedees.values_list('competence_id', flat=True))
-#     certificats = agent.certificat_set.all()
-#     certificats_data = [{
-#         "id": c.id,
-#         "libelle": c.libelle,
-#         "type": c.type,
-#         "date_obtention": c.date_obtention.strftime('%Y-%m-%d') if c.date_obtention else "",
-#         "date_validite": c.date_validite.strftime('%Y-%m-%d') if c.date_validite else "",
-#         "statut": c.statut,
-#         "organisme": c.organisme,
-#     } for c in certificats]
-
-#     agent_data = {
-#         "id": agent.id,
-#         "nom": agent.nom,
-#         "prenoms": agent.prenoms,
-#         "email": agent.email,
-#         "telephone": agent.telephone,
-#         "nationalite": agent.nationalite,
-#         "statut": agent.statut,
-#         "residence": agent.residence,
-#         "pays_affectation_actuelle": agent.pays_affectation_actuelle,
-#         "competences": competences_ids,
-#         "certificats": certificats_data
-#     }
-
-#     return JsonResponse(agent_data, safe=False)
 
 
 

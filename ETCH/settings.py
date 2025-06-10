@@ -138,4 +138,17 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Fichiers média (contenu téléchargé par l'utilisateur, comme les PDF)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media') # Ceci va créer un dossier 'media' à la racine de votre projet
 
+# settings.py
+
+USE_TZ = True # Ce paramètre doit être à True pour utiliser les fonctionnalités de fuseau horaire de Django
+
+# Définissez votre fuseau horaire. Pour l'heure locale en Côte d'Ivoire, c'est 'Africa/Abidjan'.
+TIME_ZONE = 'Africa/Abidjan'
+
+# LANGUAGE_CODE et USE_I18N sont aussi utiles pour l'internationalisation
+LANGUAGE_CODE = 'fr-fr' # Langue par défaut de votre site
+USE_I18N = True # Active le système de traduction de Django

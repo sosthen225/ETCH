@@ -1,6 +1,7 @@
 # forms.py
+from datetime import timezone
 from django import forms
-from .models import COMPETENCE_CHOICES, Competence, Posseder, Projet, Client
+from .models import COMPETENCE_CHOICES, Certificat, Competence, Expatriation, PaysAffectation, Posseder, Projet, Client
 
 class ProjetForm(forms.ModelForm):
     client_nom = forms.CharField(label="Nom du client", max_length=100)
@@ -87,25 +88,43 @@ class ModifierPersonnelForm(forms.ModelForm):
         required=True
     )
 
+    pays_affectation = forms.CharField(
+        max_length=100,
+        required=True,
+        label="Pays d'affectation"
+    )
+
+    certificats = forms.FileField(
+    required=False,
+    widget=forms.FileInput(),
+    label="Certificats (PDF)"
+)
+
+    
+
     class Meta:
         model = Personnel
         fields = [
             'nom', 'prenoms', 'email', 'telephone',
             'nationalite', 'statut', 'residence',
-            'pays_affectation'
         ]
         widgets = {
-            'statut': forms.Select(choices=[('en_cours', 'En cours'), ('termine', 'Terminé'), ('en_attente' , 'En attente'),('suspendu','Suspendu') ]),
+            'statut': forms.Select(choices=[
+                ('en_cours', 'En cours'),
+                ('termine', 'Terminé'),
+                ('en_attente', 'En attente'),
+                ('suspendu', 'Suspendu')
+            ]),
         }
 
     def __init__(self, *args, **kwargs):
-        # Tu peux passer l'agent à modifier pour préremplir la compétence
         self.agent = kwargs.pop('agent', None)
         super().__init__(*args, **kwargs)
-        for field in self.fields.values():
-          field.widget.attrs['class'] = 'form-control'
 
-        # Préremplir la compétence si elle existe via Posseder
+        for field in self.fields.values():
+            field.widget.attrs['class'] = 'form-control'
+
+        # Préremplir compétence
         if self.agent:
             try:
                 posseder = Posseder.objects.get(personnel=self.agent)
@@ -113,17 +132,45 @@ class ModifierPersonnelForm(forms.ModelForm):
             except Posseder.DoesNotExist:
                 pass
 
+            # Préremplir pays affectation
+            expatriation = self.agent.expatriations.order_by('-date_expatriation').first()
+            if expatriation:
+                self.fields['pays_affectation'].initial = expatriation.pays.nom_pays
+
     def save(self, commit=True):
         agent = super().save(commit=False)
+
+        # Gérer la compétence
         selected_libelle = self.cleaned_data.get('competence')
         competence_obj, _ = Competence.objects.get_or_create(libelle=selected_libelle)
 
+        # Gérer le pays d'affectation
+        nom_pays = self.cleaned_data.get('pays_affectation').strip()
+        pays_obj, _ = PaysAffectation.objects.get_or_create(nom_pays=nom_pays)
+
         if commit:
             agent.save()
+
             # Met à jour ou crée la relation Posseder
             Posseder.objects.update_or_create(
                 personnel=agent,
                 defaults={'competence': competence_obj}
             )
+
+            # Met à jour ou crée l'Expatriation
+            Expatriation.objects.update_or_create(
+                personnel=agent,
+                defaults={
+                    'pays': pays_obj,
+                    'date_expatriation': timezone.now().date()
+                }
+            )
+
+            # Gérer les certificats
+            for fichier in self.files.getlist('certificats'):
+                Certificat.objects.create(
+                    personnel=agent,
+                    fichier=fichier
+                )
 
         return agent
