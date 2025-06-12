@@ -1,4 +1,4 @@
-{% extends 'index.html' %}
+{% extends 'index.html' %}{% load static %}
 
 {% block content %}
 <div class="container mt-5">
@@ -14,7 +14,8 @@
             <tr>
                 <th>Nom de l'équipe</th>
                 <th>Date de création</th>
-                <th>Membres</th>
+                <th>Membres (Rôle + Compétences)</th>
+                <th>Actions</th> {# New column for actions #}
             </tr>
         </thead>
         <tbody>
@@ -25,12 +26,33 @@
                 <td>
                     <ul class="list-unstyled mb-0">
                         {% for membre in equipe.membres.all %}
-
-                            <li><strong>{{ membre.personnel.nom }}</strong> – {{ membre.role }}</li>
+                            <li>
+                                <strong>{{ membre.personnel.nom }} {{ membre.personnel.prenoms }}</strong> – 
+                                <span class="text-primary">{{ membre.get_role_display }}</span>
+                                
+                                <ul>
+                                    {% for competence in membre.personnel.competences_possedees.all %}
+                                        <li>
+                                            {{ competence.competence.libelle }}
+                                        </li>
+                                    {% empty %}
+                                        <li><em>Aucune compétence</em></li>
+                                    {% endfor %}
+                                </ul>
+                            </li>
                         {% empty %}
                             <li><em>Aucun membre</em></li>
                         {% endfor %}
                     </ul>
+                </td>
+                <td>
+                    
+                    <a href="{% url 'modifier_equipe' equipe.id %}" class="btn btn-sm btn-warning mb-1">
+                        Modifier
+                    </a>
+                    <a href="{% url 'supprimer_equipe' equipe.id %}" class="btn btn-sm btn-danger mb-1" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette équipe ?');">
+                        Supprimer
+                    </a>
                 </td>
             </tr>
             {% endfor %}
@@ -38,7 +60,6 @@
     </table>
 </div>
 
-<!-- DataTables init -->
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         $('#tableEquipes').DataTable({

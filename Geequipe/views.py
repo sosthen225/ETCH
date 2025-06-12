@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404, render
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
 from django.contrib import messages
-from Geequipe.forms import EquipeForm, MembreFormSet, ModifierPersonnelForm, ProjetForm
+from Geequipe.forms import AffectationProjetForm, EquipeForm, MembreFormSet, ModifierPersonnelForm, ProjetForm
 from Geequipe.models import ChefProjet, Projet , Client
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -22,7 +22,7 @@ from Geequipe.models import ChefProjet, Projet, Client
 import json
 from datetime import datetime
 from django.http import JsonResponse
-from .models import COMPETENCE_CHOICES, PAYS_CHOICES, Certificat, Competence, Equipe, Expatriation, Membre, PaysAffectation, Personnel, Projet, Client, Posseder
+from .models import COMPETENCE_CHOICES, PAYS_CHOICES, AffectationProjet, Certificat, Competence, Equipe, Expatriation, Membre, PaysAffectation, Personnel, Projet, Client, Posseder
 from django.contrib.auth import get_user_model
 User = get_user_model()
 import json
@@ -34,12 +34,12 @@ from django.views.decorators.http import require_POST
 from django.utils.dateparse import parse_date
 from django.core.files.uploadedfile import UploadedFile
 from django.shortcuts import render, redirect
-from django.db import transaction
+from django.db import  IntegrityError, transaction
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 from django.utils.dateparse import parse_date
-
+from django.contrib import messages
 
 
 
@@ -72,8 +72,9 @@ def index(request):
     total_teams = Equipe.objects.count()
     total_personnel = Personnel.objects.count()
     completed_projects = Projet.objects.filter(statut='terminé').count()
-    ongoing_projects = Projet.objects.filter(statut='en cours').count()
-    completed_projects_list = Projet.objects.filter(statut='terminé').order_by('-date_fin')[:5] # Obtenir les 5 derniers projets terminés
+    ongoing_projects = Projet.objects.filter(statut='en_cours').count()
+    projet_encours= Projet.objects.filter(statut='en_cours').order_by('-date_fin')[:10]
+    completed_projects_list = Projet.objects.filter(statut='terminé').order_by('-date_fin')[:10] # Obtenir les 5 derniers projets terminés
 
     # Pour les notifications : Projets se terminant bientôt (par exemple, dans les 30 jours)
     today = date.today()
@@ -81,14 +82,14 @@ def index(request):
     upcoming_projects = Projet.objects.filter(
     date_fin__gt=today,
     date_fin__lte=one_month_from_now,
-    statut='en cours'
+    statut='en_cours'
 ).order_by('date_fin')
 
-    # Pour les notifications : Certifications du personnel expirant bientôt (par exemple, dans les 30 jours)
-    expiring_personnel = Personnel.objects.filter(
-        certification_expiry_date__gt=today,
-        certification_expiry_date__lte=one_month_from_now
-    ).order_by('certification_expiry_date')
+    # # Pour les notifications : Certifications du personnel expirant bientôt (par exemple, dans les 30 jours)
+    # expiring_personnel = Personnel.objects.filter(
+    #     certification_expiry_date__gt=today,
+    #     certification_expiry_date__lte=one_month_from_now
+    # ).order_by('certification_expiry_date')
 
 
     context = {
@@ -98,7 +99,8 @@ def index(request):
         'total_personnel': total_personnel,
         'completed_projects_list': completed_projects_list,
         'upcoming_projects': upcoming_projects,
-        'expiring_personnel': expiring_personnel,
+        'projet_encours': projet_encours
+       # 'expiring_personnel': expiring_personnel,
     }
     return render(request, 'index.html',context)
 
@@ -277,7 +279,7 @@ def enregistrer_agent(request):
             statut = request.POST.get('statut')
             residence = request.POST.get('residence')
             pays_affectation = request.POST.get('pays_affectation')
-            libelle_competence = request.POST.get('competences')
+            libelle_competence = request.POST.get('competence')
            
 
             # Création du personnel
@@ -301,13 +303,15 @@ def enregistrer_agent(request):
                     date_expatriation=parse_date(request.POST.get('date_expatriation')) or timezone.now().date()
                 )
 
-            
+            libelle_competence = request.POST.get('competence')
+            print(f"Valeur de libelle_competence reçue : '{libelle_competence}'") # <<< Ajoutez ceci
+
             if libelle_competence:
                 
                     competence, _ = Competence.objects.get_or_create(libelle=libelle_competence)
-
+                    print(f"Competence trouvée/créée : {competence.libelle}, Créée: {_}")
                     Posseder.objects.create(personnel=personnel, competence=competence)
-
+                    print("Liaison Posseder créée.")
             # 4. Gestion des certificats dynamiques
             certificats = [key.split('[')[1].split(']')[0] for key in request.POST if key.startswith('certificats[')]
             certificats = list(set(certificats))  # Supprimer les doublons
@@ -322,8 +326,8 @@ def enregistrer_agent(request):
                 fichier = request.FILES.get(f'{prefix}[fichier]')
                 # Vérification des champs requis
                 print(f"Traitement du certificat {cert_id}: {libelle}, {type_cert}, {obtention}, {validite}, {organisme}")
-            if all([libelle, type_cert, obtention, validite, organisme]):
-                Certificat.objects.create(
+                if all([libelle, type_cert, obtention, validite, organisme]):
+                 Certificat.objects.create(
                     personnel=personnel,
                     libelle=libelle,
                     type=type_cert,
@@ -364,9 +368,50 @@ def modifier_agent(request, agent_id):
     
     
     
+# from django.http import JsonResponse
+# from .models import Personnel
+
+# def get_agent_data(request, agent_id):
+#     agent = get_object_or_404(Personnel, id=agent_id)
+
+#     data = {
+#         'id': agent.id,
+#         'nom': agent.nom,
+#         'prenoms': agent.prenoms,
+#         'email': agent.email,
+#         'telephone': agent.telephone,
+#         'nationalite': agent.nationalite,
+#         'statut': agent.statut,
+#         'residence': agent.residence,
+#         'pays_affectation_actuelle': agent.pays_affectation_actuelle,
+#         'competences': list(agent.competences.values_list('id', flat=True)),
+#         'certificats': [
+#             {
+#                 'id': cert.id,
+#                 'libelle': cert.libelle,
+#                 'type': cert.type,
+#                 'date_obtention': cert.date_obtention.strftime('%Y-%m-%d') if cert.date_obtention else '',
+#                 'date_validite': cert.date_validite.strftime('%Y-%m-%d') if cert.date_validite else '',
+#                 'organisme': cert.organisme,
+#                 'fichier_url': cert.fichier.url if cert.fichier else ''
+#             } for cert in agent.certificats.all()
+#         ]
+#     }
+
+#     return JsonResponse(data)  
     
+# def modifier_agent(request, agent_id):
+#     agent = get_object_or_404(Personnel, id=agent_id)
+
+#     if request.method == 'POST':
+#         form = ModifierPersonnelForm(request.POST, request.FILES, instance=agent)
+#         if form.is_valid():
+#             form.save()
+#             return JsonResponse({'success': True})
+#         else:
+#             return JsonResponse({'success': False, 'errors': form.errors}, status=400)
     
-    
+#     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 
 @require_POST
@@ -447,6 +492,90 @@ def liste_equipes(request):
 
 
 
+def affecter_equipe(request):
+    if request.method == 'POST':
+        form = AffectationProjetForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Équipe affectée au projet avec succès.")
+            return redirect('affecter_equipe')  # Redirige pour éviter la double soumission
+        else:
+            # Si le formulaire n'est pas valide, messages.error peut afficher les erreurs de validation
+            # Le formulaire contiendra automatiquement les erreurs non liées aux champs (comme celle de clean())
+            # et les erreurs spécifiques aux champs.
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{field}: {error}")
+    else:
+        form = AffectationProjetForm()
+
+    affectations = AffectationProjet.objects.select_related('projet', 'equipe').order_by('-date_affectation')
+
+    return render(request, 'affectation_projet.html', {
+        'form': form,
+        'affectations': affectations
+    })
+
+
+
+
+
+# def liste_affectations(request):
+#     affectations = AffectationProjet.objects.select_related('projet', 'equipe')
+#     return render(request, 'liste_affectations.html', {'affectations': affectations})
+
+
+
+def mobiliser_equipes(request, projet_id):
+    projet = get_object_or_404(Projet, id=projet_id)
+    equipes = projet.affectationprojet_set.all()
+    return render(request, 'mobilisation.html', {
+        'projet': projet,
+        'equipes': equipes,
+    })
+
+
+# from django.db.models import Prefetch
+
+# def organiser_mobilisation(request):
+#     # Charger les projets "en cours" + leurs affectations avec les équipes associées
+#     affectations = Projet.objects.filter(statut='en_cours').prefetch_related(
+#     Prefetch(
+#             'equipe_affectee', 
+#             queryset=AffectationProjet.objects.select_related('equipe')
+#         )
+#     )
+
+#     return render(request, 'mobilisation.html', {'affectations': affectations})
+
+
+def organiser_mobilisation(request):
+    
+    # Récupérer les projets "en cours" ayant au moins une affectation liée
+    projets = Projet.objects.filter(
+        statut='en_cours',
+        equipe_affectee__isnull=False  # relation inversée de AffectationProjet
+    ).distinct()  # éviter les doublons si plusieurs équipes
+    print("Projet:", projets)
+
+    #  Préparation des données pour le template
+    data = []
+    for projet in projets:
+        # On récupère les affectations pour ce projet
+        affectations = AffectationProjet.objects.filter(projet=projet).select_related('equipe')
+
+        # On extrait les équipes à partir des affectations
+        equipes = [a.equipe for a in affectations]
+        print("Projet:", projet.nom, "Équipes:", [e.nom for e in equipes])
+        # On construit une entrée dans la liste finale
+        data.append({
+            'projet': projet,
+            'equipes': equipes
+        })
+
+    # 3. On envoie les données au template
+
+    return render(request, 'mobilisation.html', {'projets_data': data})
 
 
 

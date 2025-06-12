@@ -30,7 +30,7 @@ COMPETENCE_CHOICES = [
     ('CORE', 'CORE'),
     ('DRIVE_TEST', 'DRIVE TEST'),
     ('OPTIMISATION', 'OPTIMISATION'),
-   
+   ('CHAUFFEUR', 'CHAUFFEUR')
     
 ]
 
@@ -38,6 +38,7 @@ ROLE_CHOICES = [
     ('monteur', 'Monteur'),
     ('chauffeur', 'Chauffeur'),
     ('technicien', 'Technicien'),
+    ("chef d'equipe", "Chef d'equipe")
 ]
 
 # ----------- MODELES -----------
@@ -55,9 +56,9 @@ class Personnel(models.Model):
     email = models.EmailField(unique=True)
     telephone = models.CharField(max_length=20,unique=True)
     nationalite = models.CharField(max_length=50)
-    statut = models.CharField (max_length=50, choices=[('actif', 'Actif'), ('inactif', 'Inactif'),('en_mission','En mission'),('en_disponibilité','En disponibilité'),('en_congé','En congé')] ,default='actif')
+    statut = models.CharField (max_length=50, choices=[('actif', 'Actif'), ('inactif', 'Inactif'),('en mission','En mission'),('en disponibilité','En disponibilité'),('en congé','En congé')] ,default='actif')
     residence = models.CharField(max_length=100)
-
+    competences = models.ManyToManyField('Competence', through='Posseder', related_name='personnel')
     def __str__(self):
         return f"{self.prenoms} {self.nom}"
     def get_pays_affectation_actuelle(self):
@@ -84,6 +85,14 @@ class Client(models.Model):
         return self.nom
 
 
+class Equipe(models.Model):
+    nom = models.CharField(max_length=100,unique=True)
+    date_creation = models.DateField(auto_now_add=True)
+   
+
+    def __str__(self):
+        return self.nom
+
 class Projet(models.Model):
     nom = models.CharField(max_length=100)
     type = models.CharField(max_length=50)
@@ -92,9 +101,11 @@ class Projet(models.Model):
     site = models.CharField(max_length=100)
     ville = models.CharField(max_length=100)
     pays = models.CharField(max_length=100)
-    statut = models.CharField(max_length=50, choices=[('en_cours', 'En cours'), ('termine', 'Terminé'), ('en_attente' , 'En attente'),('suspendu','Suspendu') ], default='en_cours')
+    statut = models.CharField(max_length=50, choices=[('en cours', 'En cours'), ('terminé', 'Terminé'), ('en attente' , 'En attente'),('suspendu','Suspendu') ], default='en cours')
     chef_projet = models.ForeignKey(ChefProjet, on_delete=models.CASCADE, related_name='projets')
     client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name='projets')
+    equipes = models.ManyToManyField(Equipe, through='AffectationProjet', related_name='projets')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -107,13 +118,7 @@ class Projet(models.Model):
         return self.nom
 
 
-class Equipe(models.Model):
-    nom = models.CharField(max_length=100,unique=True)
-    date_creation = models.DateField(auto_now_add=True)
-   
 
-    def __str__(self):
-        return self.nom
 
 
 class Membre(models.Model):
@@ -129,12 +134,8 @@ class Competence(models.Model):
     libelle = models.CharField(max_length=50, choices=COMPETENCE_CHOICES)
     autre = models.CharField(max_length=100, blank=True, null=True)
 
-    def clean(self):
-        if self.libelle == 'AUTRE' and not self.autre:
-            raise ValidationError("Le champ 'autre' est requis si la compétence est 'AUTRE'.")
-
     def __str__(self):
-        return self.autre if self.libelle == 'AUTRE' else self.libelle
+        return self.libelle
 
 
 class Posseder(models.Model):
@@ -239,7 +240,13 @@ class Mobilisation(models.Model):
 class AffectationProjet(models.Model):
     equipe = models.ForeignKey('Equipe', on_delete=models.CASCADE, related_name='affectations_projet')
     projet = models.ForeignKey('Projet', on_delete=models.CASCADE, related_name='equipe_affectee')
-    
+    date_affectation=models.DateField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('equipe', 'projet')
+        verbose_name = "Affectation à un projet"
+        verbose_name_plural = "Affectations à des projets"
+
     def __str__(self):
         return f"{self.equipe} affectée au projet {self.projet}"
 

@@ -1,7 +1,7 @@
 # forms.py
 from datetime import timezone
 from django import forms
-from .models import COMPETENCE_CHOICES, Certificat, Competence, Expatriation, PaysAffectation, Posseder, Projet, Client
+from .models import COMPETENCE_CHOICES, AffectationProjet, Certificat, Competence, Expatriation, PaysAffectation, Posseder, Projet, Client
 
 class ProjetForm(forms.ModelForm):
     client_nom = forms.CharField(label="Nom du client", max_length=100)
@@ -38,7 +38,7 @@ class ProjetForm(forms.ModelForm):
 
 
 
-from django.forms import modelformset_factory, BaseModelFormSet
+from django.forms import ValidationError, modelformset_factory, BaseModelFormSet
 from .models import Equipe, Membre, Personnel
 
 class EquipeForm(forms.ModelForm):
@@ -174,3 +174,31 @@ class ModifierPersonnelForm(forms.ModelForm):
                 )
 
         return agent
+    
+
+
+
+class AffectationProjetForm(forms.ModelForm):
+    class Meta:
+        model = AffectationProjet
+        fields = ['projet', 'equipe']
+        widgets = {
+            'projet': forms.Select(attrs={'class': 'form-select'}),
+            'equipe': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filtre le queryset des projets pour n'afficher que les projets 'en_cours'
+        self.fields['projet'].queryset = Projet.objects.filter(statut='en_cours')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        equipe = cleaned_data.get('equipe')
+        projet = cleaned_data.get('projet')
+
+        if equipe and projet:
+            # Vérifie si cette équipe spécifique est déjà affectée à ce projet spécifique
+            if AffectationProjet.objects.filter(equipe=equipe, projet=projet).exists():
+                raise ValidationError("Cette équipe est déjà affectée à ce projet.")
+        return cleaned_data

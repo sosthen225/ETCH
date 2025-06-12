@@ -1,13 +1,14 @@
 {% extends 'index.html' %}
 
 {% block content %}
+
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <div class="container mt-5">
     <button class="btn btn-primary mb-3" id="addRowBtn">Ajouter un nouvel agent</button>
     <table id="myTable" class="display nowrap table table-bordered" style="width:100%">
-        <thead>
+        <thead class="thead-dark">
             <tr>
                 <th>Nom</th>
                 <th>Prénoms</th>
@@ -42,7 +43,7 @@
                     <a href="{% url 'voir_certificats' agent.id %}" class="btn btn-info btn-sm">Voir</a>
                 </td>
                 <td>
-                    <a href="{% url 'modifier_agent' agent.id %}" class="btn btn-warning btn-sm edit-btn" data-id="{{ agent.id }}">Modifier</a>
+                    <a href="{% url 'modifier_agent' agent.id %}" class="btn btn-warning btn-sm edi-btn" data-id="{{ agent.id }}">Modifier</a>
                     <button class="btn btn-danger btn-sm delete-btn" data-id="{{ agent.id }}">Supprimer</button>
 
                 </td>
@@ -126,16 +127,15 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.3/jszip.min.js"></script>
 
 <script>
+
 $(document).ready(function () {
-    // Initialisation de DataTables
     $('#myTable').DataTable({
-        scrollY: '500px',
         scrollX: true,
-        scrollCollapse: true,
-        fixedHeader: true,
-        paging: true,
+        responsive: true,
+        pageLength: 10,
         dom: 'Bfrtip',
         language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json',
             emptyTable: "Aucun agent à afficher pour le moment",
             info: "Affichage de _START_ à _END_ sur _TOTAL_ entrées",
             infoEmpty: "Affichage de 0 à 0 sur 0 entrées",
@@ -162,6 +162,8 @@ $(document).ready(function () {
             className: 'btn btn-success mb-3'
         }]
     });
+
+
 
     // Initialisation de Select2 pour les compétences
     $('#competence-select').select2({
@@ -311,7 +313,7 @@ $(document).ready(function () {
         $('#rowModalLabel').text('Modifier l\'agent');
 
         $.ajax({
-            url: `/api/agents/${agentId}/`, 
+            url: `/${agentId}/`, 
             method: "GET",
             success: function(agentData) {
                 $('input[name="nom"]').val(agentData.nom);
@@ -352,7 +354,7 @@ $(document).ready(function () {
                     });
                 }
 
-                $('#rowForm').attr('action', `/api/agents/${agentId}/update/`); 
+                $('#rowForm').attr('action', `modifier_agent/${agentId}/update/`); 
                 $('#rowForm').data('agent-id', agentId); 
 
                 $('#rowModal').modal('show');

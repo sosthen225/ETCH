@@ -1,6 +1,6 @@
 from django.urls import include, path, reverse_lazy
 from ETCH import settings
-from Geequipe.views import ajouter_projet, creer_equipe, enregistrer_agent, get_competences_certificats, index, liste_equipes, login_page, logout_view, modifier_agent, modifier_projet, projet_json, supprimer_agent, supprimer_projet, tabpersonels, tabprojet, voir_certificats
+from Geequipe.views import affecter_equipe, ajouter_projet, creer_equipe, enregistrer_agent, get_competences_certificats, index, liste_equipes, login_page, logout_view, mobiliser_equipes, modifier_agent, modifier_projet, organiser_mobilisation, projet_json, supprimer_agent, supprimer_projet, tabpersonels, tabprojet, voir_certificats
 from django.contrib.auth import views as auth_views
 from django.conf.urls.static import static
 
@@ -22,7 +22,7 @@ urlpatterns = [
 
    #path('api/competences-certificats/',get_competences_certificats, name='get_competences_certificats'),
     path('api/enregistrer-agent/', enregistrer_agent, name='enregistrer_agent'),
-    path('modifier_agent/<int:agent_id>/', modifier_agent, name='modifier_agent'),
+    path('/accueil/personels/modifier_agent/<int:agent_id>/', modifier_agent, name='modifier_agent'),
     path('agents/supprimer/<int:agent_id>/',supprimer_agent, name='supprimer_agent'),
     
 
@@ -30,6 +30,14 @@ urlpatterns = [
     
     path('creer_equipe/',creer_equipe, name='creer_equipe'),
     path('liste_equipes/',liste_equipes, name='liste_equipes'),
+    path('affecter_equipe/', affecter_equipe, name='affecter_equipe'),
+    path('modifer_equipe/<int:id>/', affecter_equipe, name='modifier_equipe'),
+    path('supprimer_equipe/<int:id>/', affecter_equipe, name='supprimer_equipe'),
+    
+
+    path('organiser_mobilisation/', organiser_mobilisation, name='organiser_mobilisation'),
+     path('mobiliser_equipes/<int:projet_id>/', mobiliser_equipes, name='mobiliser_equipes'),
+
     
 
 ]

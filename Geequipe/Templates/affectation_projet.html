@@ -1,0 +1,107 @@
+{% extends 'index.html' %}
+
+{% block title %}Affectation d'Équipe{% endblock %}
+
+{% block content %}
+<!-- Section formulaire -->
+<div class="container-fluid">
+    <div class="row g-4">
+        <!-- Formulaire -->
+        <div class="col-md-12 col-lg-6">
+            <div class="card shadow rounded-4 mb-4">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Affecter une équipe à un projet</h5>
+                </div>
+                <div class="card-body">
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        <ul class="mb-0">
+                            {% for field in form %}
+                                {% for error in field.errors %}
+                                    <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">Projet</label>
+                            {{ form.projet }}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Équipe</label>
+                            {{ form.equipe }}
+                        </div>
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary">Affecter</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tableau des affectations -->
+        <div class="col-md-12 mt-5">
+            <div class="card shadow rounded-4">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Affectations récentes</h5>
+                </div>
+                <div class="card-body">
+                    {% if affectations %}
+                    <div class="table-responsive">
+                        <table id="table-affectations" class="table table-bordered table-hover table-striped w-100">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Équipe</th>
+                                    <th>Projet</th>
+                                    <th>Date d'affectation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for a in affectations %}
+                                <tr>
+                                    <td>{{ a.equipe.nom }}</td>
+                                    <td>{{ a.projet.nom }}</td>
+                                    <td>{{ a.date_affectation|date:"d/m/Y" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                        <p class="text-muted">Aucune affectation enregistrée pour le moment.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DataTables CSS & JS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css"> 
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script> 
+<script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script> 
+
+<script>
+    $(document).ready(function () {
+        $('#table-affectations').DataTable({
+            language: {
+                search: "🔍 Rechercher :",
+                lengthMenu: "Afficher _MENU_ éléments",
+                info: "Page _PAGE_ sur _PAGES_",
+                paginate: {
+                    next: "Suivant",
+                    previous: "Précédent"
+                }
+            },
+            paging: true,
+            searching: true,
+            ordering: true,
+            autoWidth: false
+        });
+    });
+</script>
+{% endblock %}

@@ -103,11 +103,19 @@
                     </a>
                   </li>
                   <li>
-                    <a href="#">
+                    <a href="{% url 'affecter_equipe' %}">
                       <i class="fas fa-link"></i>
                       <span>affecter une équipe à un projet</span>
                     </a>
                   </li>
+
+                  <li>
+                      <a href="{% url 'organiser_mobilisation' %}">
+                     <i class="fas fa-clipboard-list"></i>
+                      <span>Organiser une mobilisation</span>
+                    </a>
+                  </li>
+
                   <li>
                     <a href="#">
                       <i class="fas fa-chart-line"></i>
@@ -365,7 +373,7 @@
                 <div class="card card-round">
                   <div class="card-header">
                     <div class="card-head-row card-tools-still-right">
-                      <div class="card-title">Projets terminés</div>
+                      <div class="card-title">Projets en cours</div>
                       <div class="card-tools">
                         <div class="dropdown">
                           <button
@@ -385,37 +393,41 @@
                       <table class="table align-items-center mb-0">
                         <thead class="thead-light">
                           <tr>
-                            <th scope="col">Nom du projet</th>
-                            <th scope="col" class="text-end">Date de fin</th>
-                            <th scope="col" class="text-end">Clients</th>
-                            <th scope="col" class="text-end">Statut</th>
+                            <th scope="col" class="text-center">Nom du projet</th>
+                            <th scope="col" class="text-center">Date de debut</th>
+                            <th scope="col" class="text-center">Date de fin prévue</th>
+                            <th scope="col" class="text-center">Clients</th>
+                            <th scope="col" class="text-center">Statut</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {% for projet in completed_projects_list %}
+                          {% for projet in projet_encours %}
                           <tr>
                             <th scope="row">{{ projet.nom }}</th>
-                            <td class="text-end">{{ projet.date_fin|date:"d/m/Y, H:i" }}</td>
-                            <td class="text-end">{{ projet.client }}</td>
-                            <td class="text-end">
-                              <span class="badge badge-success">terminé</span>
+                            <td class="text-end">{{ projet.date_debut|date:"d/m/Y" }}</td>
+                            <td class="text-end">{{ projet.date_fin|date:"d/m/Y" }}</td>
+                            <td class="text-center">{{ projet.client }}</td>
+                            <td class="text-center">
+                              <span class="badge badge-info">en cours</span>
                             </td>
                           </tr>
                           {% empty %}
                           <tr>
-                            <td colspan="4" class="text-center">Aucun projet terminé pour le moment.</td>
+                            <td colspan="4" class="text-center">Aucun projet en cours pour le moment.</td>
                           </tr>
                           {% endfor %}
                         </tbody>
                       </table>
                     </div>
                   </div>
+
+                  
                 </div>
               </div>
               <div class="col-md-4">
                 <div class="card card-round">
                   <div class="card-header">
-                    <div class="card-title">Projets à venir / Expirations de certifications</div>
+                    <div class="card-title">ALERTES</div>
                   </div>
                   <div class="card-body">
                     <ul class="list-unstyled agenda-widget ps-4">
@@ -441,6 +453,10 @@
                         <p class="text-muted">Aucun projet à venir avec une date de fin proche.</p>
                       </li>
                       {% endfor %}
+
+
+
+                      
 
                       {% for personnel in expiring_personnel %}
                       <li class="agenda-item">
@@ -471,6 +487,54 @@
                 </div>
               </div>
             </div>
+
+
+
+<div class="row mt-4">
+              <div class="col-md-12">
+                <div class="card card-round">
+                  <div class="card-header">
+                    <div class="card-head-row card-tools-still-right">
+                      <div class="card-title">Liste des Projets terminés</div>
+                    </div>
+                  </div>
+                  <div class="card-body p-0">
+                    <div class="table-responsive">
+                      <table class="table align-items-center mb-0">
+                        <thead class="thead-light">
+                          <tr>
+                            <th scope="col">Nom du projet</th>
+                            <th scope="col">Date de fin</th>
+                            <th scope="col">Client</th>
+                            <th scope="col">Client</th>
+                            <th scope="col" class="text-center">Statut</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {% for projet in completed_projects_list %}
+                          <tr>
+                            <th scope="row">{{ projet.nom }}</th>
+                            <td class="text-end">{{ projet.date_fin|date:"d/m/Y" }}</td>
+                            <td>{{ projet.client }}</td>
+                            <td>{{ projet.equipe }}</td>
+                            <td class="text-center">
+                              <span class="badge badge-success">terminé</span>
+                            </td>
+                          </tr>
+                          {% empty %}
+                          <tr>
+                            <td colspan="5" class="text-center">Aucun projet terminé pour le moment.</td>
+                          </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+
 
             <div class="card card-round">
               <div class="card-header">
@@ -729,7 +793,75 @@
     </script>
 
 
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const notificationList = document.getElementById('notification-list');
+    const notificationCount = document.getElementById('notification-count');
+    const notificationCountTitle = document.getElementById('notification-count-title');
 
+    function updateNotificationsUI(notifications) {
+        notificationCount.textContent = notifications.length;
+        notificationCountTitle.textContent = notifications.length;
+        notificationList.innerHTML = '';
+
+        if (notifications.length === 0) {
+            notificationList.innerHTML = '<div class="notif-center"><p class="text-center text-muted m-3">Aucune nouvelle notification.</p></div>';
+            return;
+        }
+
+        notifications.forEach(notif => {
+            const notifItem = `
+                <a href="#">
+                    <div class="notif-icon ${notif.color}">
+                        <i class="${notif.icon}"></i>
+                    </div>
+                    <div class="notif-content">
+                        <span class="block">${notif.message}</span>
+                        <span class="time">Bientôt</span>
+                    </div>
+                </a>`;
+            notificationList.innerHTML += notifItem;
+        });
+    }
+
+    function checkNotifications() {
+        let notifications = [];
+        const today = new Date();
+        const oneMonthFromNow = new Date(today);
+        oneMonthFromNow.setMonth(today.getMonth() + 1);
+
+        // Projets à venir
+        {% for projet in upcoming_projects %}
+            const projectEndDate = new Date("{{ projet.date_fin|date:'Y-m-d' }}");
+            if (projectEndDate > today && projectEndDate <= oneMonthFromNow) {
+                notifications.push({
+                    type: "project",
+                    message: "Le projet '{{ projet.nom }}' se termine le {{ projet.date_fin|date:'d/m/Y' }} !",
+                    icon: "fas fa-clock",
+                    color: "notif-warning"
+                });
+            }
+        {% endfor %}
+
+        // Certifications expirantes
+        {% for person in expiring_personnel %}
+            const certExpiryDate = new Date("{{ person.certification_expiry_date|date:'Y-m-d' }}");
+            if (certExpiryDate > today && certExpiryDate <= oneMonthFromNow) {
+                notifications.push({
+                    type: "certification",
+                    message: "La certification '{{ person.certification_name }}' de {{ person.nom }} expire le {{ person.certification_expiry_date|date:'d/m/Y' }} !",
+                    icon: "fas fa-certificate",
+                    color: "notif-danger"
+                });
+            }
+        {% endfor %}
+
+        updateNotificationsUI(notifications);
+    }
+
+    checkNotifications();
+});
+</script>
 
 
   </body>
