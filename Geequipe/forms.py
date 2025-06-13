@@ -178,6 +178,55 @@ class ModifierPersonnelForm(forms.ModelForm):
 
 
 
+# class AffectationProjetForm(forms.ModelForm):
+#     class Meta:
+#         model = AffectationProjet
+#         fields = ['projet', 'equipe']
+#         widgets = {
+#             'projet': forms.Select(attrs={'class': 'form-select'}),
+#             'equipe': forms.Select(attrs={'class': 'form-select'}),
+#         }
+
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         # Filtre le queryset des projets pour n'afficher que les projets 'en_cours'
+#         self.fields['projet'].queryset = Projet.objects.filter(statut='en_cours')
+
+#     def clean(self):
+#         cleaned_data = super().clean()
+#         equipe = cleaned_data.get('equipe')
+#         projet = cleaned_data.get('projet')
+
+#         if equipe and projet:
+#             # Vérifie si cette équipe spécifique est déjà affectée à ce projet spécifique
+#             if AffectationProjet.objects.filter(equipe=equipe, projet=projet).exists():
+#                 raise ValidationError("Cette équipe est déjà affectée à ce projet.")
+#         return cleaned_data
+
+
+
+# class AffectationProjetForm(forms.ModelForm):
+#     class Meta:
+#         model = AffectationProjet
+#         fields = ['projet', 'equipe']
+#         widgets = {
+#             'projet': forms.Select(attrs={'class': 'form-select', 'id': 'id_projet'}),
+#             'equipe': forms.Select(attrs={'class': 'form-select', 'id': 'id_equipe'}),
+#         }
+
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+
+#         # Projets en cours
+#         projets_en_cours = Projet.objects.filter(statut='en_cours')
+
+#         # Supprimer pour chaque projet les équipes déjà assignées
+#         equipe_assignees = AffectationProjet.objects.values_list('equipe_id', flat=True).distinct()
+#         self.fields['equipe'].queryset = Equipe.objects.exclude(id__in=equipe_assignees)
+
+#         # Tous les projets en cours
+#         self.fields['projet'].queryset = projets_en_cours
+
 class AffectationProjetForm(forms.ModelForm):
     class Meta:
         model = AffectationProjet
@@ -189,16 +238,17 @@ class AffectationProjetForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Filtre le queryset des projets pour n'afficher que les projets 'en_cours'
+
         self.fields['projet'].queryset = Projet.objects.filter(statut='en_cours')
 
-    def clean(self):
-        cleaned_data = super().clean()
-        equipe = cleaned_data.get('equipe')
-        projet = cleaned_data.get('projet')
+        # Par défaut, aucune restriction sur les équipes
+        self.fields['equipe'].queryset = Equipe.objects.all()
 
-        if equipe and projet:
-            # Vérifie si cette équipe spécifique est déjà affectée à ce projet spécifique
-            if AffectationProjet.objects.filter(equipe=equipe, projet=projet).exists():
-                raise ValidationError("Cette équipe est déjà affectée à ce projet.")
-        return cleaned_data
+        # Si un projet est sélectionné (POST ou initial), on filtre les équipes
+        if 'projet' in self.data:
+            try:
+                projet_id = int(self.data.get('projet'))
+                equipe_ids_exclues = AffectationProjet.objects.filter(projet_id=projet_id).values_list('equipe_id', flat=True)
+                self.fields['equipe'].queryset = Equipe.objects.exclude(id__in=equipe_ids_exclues)
+            except (ValueError, TypeError):
+                pass  # Données invalides, pas de filtrage

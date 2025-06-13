@@ -1,6 +1,6 @@
 from django.urls import include, path, reverse_lazy
 from ETCH import settings
-from Geequipe.views import affecter_equipe, ajouter_projet, creer_equipe, enregistrer_agent, get_competences_certificats, index, liste_equipes, login_page, logout_view, mobiliser_equipes, modifier_agent, modifier_projet, organiser_mobilisation, projet_json, supprimer_agent, supprimer_projet, tabpersonels, tabprojet, voir_certificats
+from Geequipe.views import affecter_equipe, ajouter_projet, creer_equipe, creer_mobilisation, enregistrer_agent, equipes_disponibles, get_competences_certificats, index, liste_equipes, login_page, logout_view, mobiliser_equipes, modifier_agent, modifier_projet, organiser_mobilisation, projet_json, projets_disponibles, search_results, supprimer_affectation, supprimer_agent, supprimer_projet, tabpersonels, tabprojet, voir_certificats
 from django.contrib.auth import views as auth_views
 from django.conf.urls.static import static
 
@@ -30,14 +30,22 @@ urlpatterns = [
     
     path('creer_equipe/',creer_equipe, name='creer_equipe'),
     path('liste_equipes/',liste_equipes, name='liste_equipes'),
-    path('affecter_equipe/', affecter_equipe, name='affecter_equipe'),
+   
     path('modifer_equipe/<int:id>/', affecter_equipe, name='modifier_equipe'),
     path('supprimer_equipe/<int:id>/', affecter_equipe, name='supprimer_equipe'),
     
 
-    path('organiser_mobilisation/', organiser_mobilisation, name='organiser_mobilisation'),
-     path('mobiliser_equipes/<int:projet_id>/', mobiliser_equipes, name='mobiliser_equipes'),
+    path('organiser_mobilisation/',organiser_mobilisation, name='organiser_mobilisation'),
+    path('creer_mobilisation/<int:projet_id>/',creer_mobilisation, name='creer_mobilisation'),
+         
+    path('mobiliser_equipes/<int:projet_id>/', mobiliser_equipes, name='mobiliser_equipes'),
 
-    
+    path('ajax/equipes_disponibles/', equipes_disponibles, name='equipes_disponibles'),
+    path('ajax/projets_disponibles/', projets_disponibles, name='projets_disponibles'),
+    path('affecter_equipe/', affecter_equipe, name='affecter_equipe'),
+    path('supprimer-affectation/<int:affectation_id>/', supprimer_affectation, name='supprimer_affectation'),
+
+
+    path('search/', search_results, name='search_results'),
 
 ]

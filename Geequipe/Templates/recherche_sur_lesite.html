@@ -1,0 +1,125 @@
+{% extends 'index.html' %} {# Assure-toi que cela correspond à ton template de base #}
+{% load static %}
+
+{% block content %}
+<div class="page-inner">
+    <div class="d-flex align-items-left align-items-md-center flex-column flex-md-row pt-2 pb-4">
+        <div>
+            <h3 class="fw-bold mb-3">Résultats de la recherche pour "{{ query }}"</h3>
+        </div>
+    </div>
+
+    {% if results.projets or results.personnel or results.equipes %} {# Vérifie s'il y a des résultats #}
+        {% if results.projets %}
+            <div class="card card-round mt-4">
+                <div class="card-header">
+                    <div class="card-title">Projets trouvés ({{ results.projets|length }})</div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table align-items-center mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th scope="col">Nom du projet</th>
+                                    <th scope="col">Client</th>
+                                    <th scope="col">Statut</th>
+                                  
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for projet in results.projets %}
+                                <tr>
+                                    <td>{{ projet.nom }}</td>
+                                    <td>{{ projet.client }}</td>
+                                    <td>
+                                        {% if projet.statut == "en cours" %}
+                                            <span class="badge badge-info">en cours</span>
+                                        {% else %}
+                                            <span class="badge badge-success">terminé</span>
+                                        {% endif %}
+                                    </td>
+                               
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if results.personnel %}
+            <div class="card card-round mt-4">
+                <div class="card-header">
+                    <div class="card-title">Personnel trouvé ({{ results.personnel|length }})</div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table align-items-center mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th scope="col">Nom complet</th>
+                                    <th scope="col">Poste</th>
+                                    <th scope="col">Email</th>
+                                    <th scope="col">Compétences</th>
+                                    <th scope="col">Certifications</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for person in results.personnel %}
+                                <tr>
+                                    <td>{{ person.nom }} {{ person.prenom }}</td>
+                                    <td>{{ person.poste }}</td>
+                                    <td>{{ person.email }}</td>
+                                    <td>{{ person.competence }}</td>
+                                    <td>
+                                        {% for cert in person.certifications.all %} {# Assumant une relation ManyToMany ou ForeignKey #}
+                                            {{ cert.certification_name }}{% if not forloop.last %}, {% endif %}
+                                        {% empty %}
+                                            N/A
+                                        {% endfor %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if results.equipes %}
+            <div class="card card-round mt-4">
+                <div class="card-header">
+                    <div class="card-title">Équipes trouvées ({{ results.equipes|length }})</div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table align-items-center mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th scope="col">Nom de l'équipe</th>
+                                    <th scope="col">Date de creation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for equipe in results.equipes %}
+                                <tr>
+                                    <td>{{ equipe.nom }}</td>
+                                    <td>{{ equipe.date_creation }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+    {% else %}
+        <div class="alert alert-info mt-4" role="alert">
+            Aucun résultat trouvé pour "{{ query }}".
+        </div>
+    {% endif %}
+</div>
+{% endblock content %}

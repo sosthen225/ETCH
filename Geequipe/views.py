@@ -22,7 +22,7 @@ from Geequipe.models import ChefProjet, Projet, Client
 import json
 from datetime import datetime
 from django.http import JsonResponse
-from .models import COMPETENCE_CHOICES, PAYS_CHOICES, AffectationProjet, Certificat, Competence, Equipe, Expatriation, Membre, PaysAffectation, Personnel, Projet, Client, Posseder
+from .models import COMPETENCE_CHOICES, PAYS_CHOICES, Activite, AffectationProjet, Certificat, Competence, Equipe, Expatriation, Membre, Mobilisation, PaysAffectation, Personnel, Projet, Client, Posseder, Realiser
 from django.contrib.auth import get_user_model
 User = get_user_model()
 import json
@@ -34,7 +34,6 @@ from django.views.decorators.http import require_POST
 from django.utils.dateparse import parse_date
 from django.core.files.uploadedfile import UploadedFile
 from django.shortcuts import render, redirect
-from django.db import  IntegrityError, transaction
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
@@ -490,9 +489,33 @@ def liste_equipes(request):
     return render(request, 'liste_equipes.html', {'equipes': equipes})
 
 
+from django.views.decorators.http import require_GET
+
+@require_GET
+def equipes_disponibles(request):
+    projet_id = request.GET.get('projet_id')
+    if projet_id:
+        equipe_ids = AffectationProjet.objects.filter(projet_id=projet_id).values_list('equipe_id', flat=True)
+        equipes = Equipe.objects.exclude(id__in=equipe_ids).values('id', 'nom')
+        return JsonResponse(list(equipes), safe=False)
+    return JsonResponse([], safe=False)
+
+@require_GET
+def projets_disponibles(request):
+    equipe_id = request.GET.get('equipe_id')
+    if equipe_id:
+        projet_ids = AffectationProjet.objects.filter(equipe_id=equipe_id).values_list('projet_id', flat=True)
+        projets = Projet.objects.filter(statut='en_cours').exclude(id__in=projet_ids).values('id', 'nom')
+        return JsonResponse(list(projets), safe=False)
+    return JsonResponse([], safe=False)
+
+
+
+
 
 
 def affecter_equipe(request):
+    
     if request.method == 'POST':
         form = AffectationProjetForm(request.POST)
         if form.is_valid():
@@ -514,7 +537,23 @@ def affecter_equipe(request):
     return render(request, 'affectation_projet.html', {
         'form': form,
         'affectations': affectations
+
     })
+
+
+
+def supprimer_affectation(request, affectation_id):
+    affectation = get_object_or_404(AffectationProjet, id=affectation_id)
+
+    # Vérifie si le projet est encore en cours
+    if affectation.projet.statut != 'en_cours':
+        messages.error(request, "Impossible de supprimer une affectation pour un projet terminé.")
+        return redirect('affecter_equipe')
+
+    if request.method == 'POST':
+        affectation.delete()
+        messages.success(request, "Affectation supprimée avec succès.")
+        return redirect('affecter_equipe')
 
 
 
@@ -533,6 +572,63 @@ def mobiliser_equipes(request, projet_id):
         'projet': projet,
         'equipes': equipes,
     })
+
+
+
+def creer_mobilisation(request, projet_id):
+    projet = get_object_or_404(Projet, id=projet_id)
+    
+    # Exemple de récupération des équipes déjà affectées à ce projet
+    equipes_affectees = Equipe.objects.filter(
+        activites_realisees__activite__projet=projet
+    ).distinct()
+
+    if request.method == 'POST':
+        nom_activite = request.POST.get('nom_activite')
+        description = request.POST.get('description')
+        date_debut = request.POST.get('date_debut')
+        date_fin = request.POST.get('date_fin')
+        site = request.POST.get('site')
+        equipe_ids = request.POST.getlist('equipes')
+        statut = request.POST.get('statut', 'Planifiée')  # exemple
+        chef_projet = request.user.chefprojet  # lien avec User supposé
+
+        # Création de l'activité
+        activite = Activite.objects.create(
+            projet=projet,
+            nom=nom_activite,
+            description=description,
+            statut=statut,
+            date_debut=date_debut,
+            date_fin=date_fin,
+            temps_passe=timedelta(),  # vide au départ
+        )
+
+        # Création de la mobilisation
+        mobilisation = Mobilisation.objects.create(
+            activite=activite,
+            chef_projet=chef_projet,
+            date_debut=date_debut,
+            date_fin=date_fin,
+            site=site
+        )
+
+        # Assigner les équipes
+        for equipe_id in equipe_ids:
+            Realiser.objects.create(
+                equipe_id=equipe_id,
+                activite=activite,
+                date=date_debut
+            )
+
+        return redirect('mobilisation.html')
+
+    return render(request, 'organiser_mobilisation.html' ,{
+        'projet': projet,
+        'equipes': equipes_affectees,
+        
+    })
+
 
 
 # from django.db.models import Prefetch
@@ -573,9 +669,104 @@ def organiser_mobilisation(request):
             'equipes': equipes
         })
 
-    # 3. On envoie les données au template
+   
 
     return render(request, 'mobilisation.html', {'projets_data': data})
+
+
+
+
+from django.db.models import Q
+def search_results(request):
+    query = request.GET.get('q') # Récupère le terme de recherche
+    
+    # Initialise un dictionnaire pour stocker les résultats de chaque catégorie
+    results = {
+        'projets': [],
+        'personnel': [],
+        'equipes': [],
+    }
+
+    if query:
+        # --- Recherche dans le modèle Projet ---
+        projets_filters = Q() # Crée un objet Q vide pour construire les conditions
+
+        # Champs textuels : Utilisez __icontains
+        projets_filters |= Q(nom__icontains=query) 
+
+        # Si 'client' est un CharField (un simple champ texte dans le modèle Projet)
+        # projets_filters |= Q(client__icontains=query) 
+        
+        # SI 'client' est une ForeignKey vers un modèle 'Client' qui a un champ 'nom' (ou 'entreprise', 'raison_sociale'...)
+        # Alors, traversez la relation :
+        projets_filters |= Q(client__nom__icontains=query) 
+        # projets_filters |= Q(client__entreprise__icontains=query) # Exemple si le champ est 'entreprise'
+
+        # Champ de date (date_fin) : 
+        # Vous devez gérer les dates différemment.
+        # Par exemple, si l'utilisateur entre une année :
+        try:
+            year = int(query)
+            projets_filters |= Q(date_fin__year=year) # Recherche par année exacte
+        except ValueError:
+            # Si 'query' n'est pas un nombre, ignore la recherche par année.
+            pass
+        # Ou si vous voulez permettre une recherche par mois/jour, c'est plus complexe et dépend
+        # du format de la requête de l'utilisateur.
+
+        projets_results = Projet.objects.filter(projets_filters).distinct()
+
+
+        # --- Recherche dans le modèle Personnel ---
+        personnel_filters = Q()
+
+        # Champs textuels et email : Utilisez __icontains
+        personnel_filters |= Q(nom__icontains=query) 
+        personnel_filters |= Q(prenoms__icontains=query)
+        personnel_filters |= Q(email__icontains=query)
+
+        # Champ téléphone (chiffres, souvent stocké en CharField pour garder les + et les espaces)
+        # Si 'telephone' est un CharField :
+        personnel_filters |= Q(telephone__icontains=query)
+        # Si 'telephone' est un IntegerField, vous devrez le convertir en chaîne pour la recherche,
+        # mais c'est moins commun et moins performant que de le stocker en CharField.
+
+        # Champ 'statut' :
+        # Si 'statut' est un CharField (ex: 'Actif', 'En congé')
+        personnel_filters |= Q(statut__icontains=query) 
+        
+        # SI 'statut' est une ForeignKey vers un modèle 'Statut' (ex: avec un champ 'libelle' ou 'nom')
+        # ALORS traversez la relation :
+        # personnel_filters |= Q(statut__libelle__icontains=query) 
+        # personnel_filters |= Q(statut__nom__icontains=query)
+
+        personnel_results = Personnel.objects.filter(personnel_filters).distinct()
+
+
+        # --- Recherche dans le modèle Equipe ---
+        equipes_filters = Q()
+
+        # Champ textuel : Utilisez __icontains
+        equipes_filters |= Q(nom__icontains=query)
+
+        # Champ de date (date_creation) : NE PAS utiliser __icontains.
+        # Même logique que pour 'date_fin' dans Projet.
+        try:
+            year = int(query)
+            equipes_filters |= Q(date_creation__year=year) # Recherche par année exacte
+        except ValueError:
+            pass
+
+        equipes_results = Equipe.objects.filter(equipes_filters).distinct()
+
+
+        # Assignation des résultats
+        results['projets'] = projets_results
+        results['personnel'] = personnel_results
+        results['equipes'] = equipes_results
+
+    # Rend le template search_results.html avec la requête et les résultats
+    return render(request, 'recherche_sur_lesite.html', {'query': query, 'results': results})
 
 
 

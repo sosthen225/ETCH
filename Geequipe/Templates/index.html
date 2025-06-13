@@ -157,37 +157,45 @@
               </button>
             </div>
           </div>
+
+
           <nav
-            class="navbar navbar-header navbar-header-transparent navbar-expand-lg border-bottom"
+           class="navbar navbar-header navbar-header-transparent navbar-expand-lg border-bottom"
           >
             <div class="container-fluid">
               <ul class="navbar-nav topbar-nav ms-md-auto align-items-center">
-                <li
-                  class="nav-item topbar-icon dropdown hidden-caret d-flex d-lg-none"
-                >
-                  <a
-                    class="nav-link dropdown-toggle"
-                    data-bs-toggle="dropdown"
-                    href="#"
-                    role="button"
-                    aria-expanded="false"
-                    aria-haspopup="true"
-                  >
-                    <i class="fa fa-search"></i>
-                  </a>
-                  <ul class="dropdown-menu dropdown-search animated fadeIn">
-                    <form class="navbar-left navbar-form nav-search">
-                      <div class="input-group">
-                        <input
-                          type="text"
-                          placeholder="Recherche..."
-                          class="form-control"
-                        />
-                      </div>
-                    </form>
-                  </ul>
-                </li>
+                <span>recherche</span><li class="nav-item topbar-icon dropdown hidden-caret">
+    <a
+        class="nav-link dropdown-toggle"
+        data-bs-toggle="dropdown"
+        href="#"
+        role="button"
+        aria-expanded="false"
+        aria-haspopup="true"
+    >
+        <i class="fa fa-search"></i>
+    </a>
+    <ul class="dropdown-menu dropdown-search animated fadeIn">
+    <form
+      class="navbar-left navbar-form nav-search w-100"
+      action="{% url 'search_results' %}"
+      method="get"
+    >
+      <div class="input-group">
+        <input
+          type="text"
+          placeholder="Rechercher sur le site..."
+          class="form-control"
+          name="q"
+        />
+        <button type="submit" class="btn btn-search">
+          <i class="fa fa-search"></i>
+        </button>
+      </div>
+    </form>
 
+    </ul>
+</li>
                 <li class="nav-item topbar-icon dropdown hidden-caret">
                   <a
                     class="nav-link dropdown-toggle"
@@ -269,6 +277,8 @@
               </ul>
             </div>
           </nav>
+
+
         </div>
 
         <div class="container">

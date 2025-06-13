@@ -57,7 +57,9 @@
                                 <tr>
                                     <th>Équipe</th>
                                     <th>Projet</th>
+                                    <th>Statut</th>
                                     <th>Date d'affectation</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -65,7 +67,27 @@
                                 <tr>
                                     <td>{{ a.equipe.nom }}</td>
                                     <td>{{ a.projet.nom }}</td>
+                                    <td>
+    {% if a.projet.statut == 'en_cours' %}
+        <span class="badge bg-success">En cours</span>
+    {% elif a.projet.statut == 'termine' %}
+        <span class="badge bg-danger">Terminé</span>
+    {% else %}
+        <span class="badge bg-secondary">{{ a.projet.get_statut_display }}</span>
+    {% endif %}
+</td>
+
                                     <td>{{ a.date_affectation|date:"d/m/Y" }}</td>
+                                    <td>
+            {% if a.projet.statut == 'en_cours' %}
+                <form method="post" action="{% url 'supprimer_affectation' a.id %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button class="btn btn-sm btn-danger" onclick="return confirm('Confirmer l'annulation de l'affectation ?')">🗑️ Annuler l'affection</button>
+                </form>
+            {% else %}
+                <span class="text-muted">Non modifiable</span>
+            {% endif %}
+        </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -104,4 +126,52 @@
         });
     });
 </script>
+
+
+
+
+<script>
+    $(document).ready(function () {
+        // Lorsqu'un projet est sélectionné, filtrer les équipes
+        $('#id_projet').on('change', function () {
+            var projetId = $(this).val();
+            $.ajax({
+                url: '{% url "equipes_disponibles" %}',
+                data: { projet_id: projetId },
+                success: function (data) {
+                    var $equipeSelect = $('#id_equipe');
+                    $equipeSelect.empty();
+                    if (data.length === 0) {
+                        $equipeSelect.append('<option value="">Aucune équipe disponible</option>');
+                    } else {
+                        $.each(data, function (i, obj) {
+                            $equipeSelect.append($('<option>').val(obj.id).text(obj.nom));
+                        });
+                    }
+                }
+            });
+        });
+
+        // Lorsqu'une équipe est sélectionnée, filtrer les projets
+        $('#id_equipe').on('change', function () {
+            var equipeId = $(this).val();
+            $.ajax({
+                url: '{% url "projets_disponibles" %}',
+                data: { equipe_id: equipeId },
+                success: function (data) {
+                    var $projetSelect = $('#id_projet');
+                    $projetSelect.empty();
+                    if (data.length === 0) {
+                        $projetSelect.append('<option value="">Aucun projet disponible</option>');
+                    } else {
+                        $.each(data, function (i, obj) {
+                            $projetSelect.append($('<option>').val(obj.id).text(obj.nom));
+                        });
+                    }
+                }
+            });
+        });
+    });
+</script>
+
 {% endblock %}

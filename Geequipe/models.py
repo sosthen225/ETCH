@@ -10,15 +10,16 @@ from django.utils import timezone
 PAYS_CHOICES = [
     ("COTE D'IVOIRE", "COTE D'IVOIRE"),
     ('BURKINA FASO', 'BURKINA FASO'),
-    ('MALI', 'MALI'),
     ('BENIN', 'BENIN'),
-    ('GUINEE', 'GUINEE'),
     ('TOGO', 'TOGO'),
     ('NIGER','NIGER'),
+
     ('SENEGAL', 'SENEGAL'),
     ('GABON', 'GABON'),
     ('CAMEROUN','CAMEROUN'),
     ('CONGO', 'CONGO'),
+     ('GUINEE', 'GUINEE'),
+    ('MALI', 'MALI'),
     ('CENTRAFRIQUE', 'CENTRAFRIQUE'),
     ('TCHAD', 'TCHAD'),
     ('REPUBLIQUE DEMOCRATIQUE DU CONGO', 'REPUBLIQUE DEMOCRATIQUE DU CONGO',),
@@ -54,7 +55,7 @@ class Personnel(models.Model):
     nom = models.CharField(max_length=100)
     prenoms = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
-    telephone = models.CharField(max_length=20,unique=True)
+    telephone = models.CharField(max_length=10,unique=True)
     nationalite = models.CharField(max_length=50)
     statut = models.CharField (max_length=50, choices=[('actif', 'Actif'), ('inactif', 'Inactif'),('en mission','En mission'),('en disponibilité','En disponibilité'),('en congé','En congé')] ,default='actif')
     residence = models.CharField(max_length=100)
