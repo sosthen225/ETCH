@@ -133,7 +133,7 @@ class Membre(models.Model):
 
 class Competence(models.Model):
     libelle = models.CharField(max_length=50, choices=COMPETENCE_CHOICES)
-    autre = models.CharField(max_length=100, blank=True, null=True)
+    
 
     def __str__(self):
         return self.libelle
@@ -151,7 +151,7 @@ class Activite(models.Model):
     projet = models.ForeignKey('Projet', on_delete=models.CASCADE, related_name='activites')
     nom = models.CharField(max_length=100)
     description = models.TextField()
-    statut = models.CharField(max_length=50)
+    statut = models.CharField(max_length=50, choices=[('en cours', 'En cours'), ('terminé', 'Terminé'), ('planifiée' , 'planifiée'),('suspendu','Suspendu') ], default='planifiée')
     date_debut = models.DateField()
     date_fin = models.DateField()
     temps_passe = models.DurationField()
@@ -192,7 +192,7 @@ class Certificat(models.Model):
         if self.validite < aujourdhui:
             return 'expire'
         elif self.validite == aujourdhui:
-            return 'expire_aujourdhui'  # Optionnel : statut spécifique pour "expire aujourd'hui"
+            return 'expire_aujourdhui' 
         elif (self.validite - aujourdhui).days <= 30:  # Validité dans les 30 jours
             return 'bientot_expire'
         else:

@@ -68,21 +68,45 @@ def login_page(request):
 
 
 def index(request):
+
+     # --- Mettre à jour le statut des projets avant de les récupérer ---
+    # Récupérer tous les projets en cours
+    projets_en_cours_a_verifier = Projet.objects.filter(statut='en_cours')
+
+    # Parcourir ces projets et mettre à jour ceux qui sont terminés
+    # Il est plus efficace de faire une mise à jour en masse si possible, mais une boucle est plus claire pour la démonstration.
+    updated_count = 0
+    today = timezone.localdate() # Utiliser timezone.localdate() pour la date locale
+
+    for projet in projets_en_cours_a_verifier:
+        if projet.date_fin <= today:
+            projet.statut = 'terminé'
+            projet.save()
+            updated_count += 1
+
+    if updated_count > 0:
+        print(f"{updated_count} projets mis à jour vers le statut 'terminé'.")
+
+
     total_teams = Equipe.objects.count()
     total_personnel = Personnel.objects.count()
     completed_projects = Projet.objects.filter(statut='terminé').count()
     ongoing_projects = Projet.objects.filter(statut='en_cours').count()
     projet_encours= Projet.objects.filter(statut='en_cours').order_by('-date_fin')[:10]
-    completed_projects_list = Projet.objects.filter(statut='terminé').order_by('-date_fin')[:10] # Obtenir les 5 derniers projets terminés
+    completed_projects_list = Projet.objects.filter(statut='terminé').order_by('-date_fin')[:10] # Obtenir les 10 derniers projets terminés
 
-    # Pour les notifications : Projets se terminant bientôt (par exemple, dans les 30 jours)
+    # Pour les notifications : Projets se terminant bientôt (par exemple, dans les 14jours)
     today = date.today()
-    one_month_from_now = today + timedelta(days=30)
+    one_month_from_now = today + timedelta(days=14)
     upcoming_projects = Projet.objects.filter(
     date_fin__gt=today,
     date_fin__lte=one_month_from_now,
     statut='en_cours'
 ).order_by('date_fin')
+    
+    #all_mobilisations = Mobilisation.objects.all().order_by('-date_debut')
+    planned_mobilisations = Mobilisation.objects.filter(statut__in=['planifié'] ).order_by('date_debut') 
+
 
     # # Pour les notifications : Certifications du personnel expirant bientôt (par exemple, dans les 30 jours)
     # expiring_personnel = Personnel.objects.filter(
@@ -98,10 +122,14 @@ def index(request):
         'total_personnel': total_personnel,
         'completed_projects_list': completed_projects_list,
         'upcoming_projects': upcoming_projects,
-        'projet_encours': projet_encours
+        'projet_encours': projet_encours,
+        'planned_mobilisations':planned_mobilisations
        # 'expiring_personnel': expiring_personnel,
     }
     return render(request, 'index.html',context)
+
+
+
 
 
 
@@ -262,6 +290,7 @@ def parse_date(date_str):
         return datetime.strptime(date_str, "%Y-%m-%d").date()
     except ValueError:
         return None
+    
 @csrf_exempt
 @transaction.atomic
 def enregistrer_agent(request):
@@ -483,6 +512,44 @@ def creer_equipe(request):
 
 
 
+
+
+
+
+
+def modifier_equipe(request, equipe_id):
+    # Récupère l'équipe à modifier ou renvoie une erreur 404 si elle n'existe pas
+    equipe = get_object_or_404(Equipe, id=equipe_id)
+
+    if request.method == 'POST':
+        # Si le formulaire est soumis (méthode POST)
+        form = EquipeForm(request.POST, instance=equipe)
+        if form.is_valid():
+            form.save()
+            # Redirigez vers une page de succès ou la liste des équipes
+            return redirect('liste_equipes') # Assurez-vous que cette URL existe
+    else:
+        # Si c'est une requête GET (première affichage du formulaire)
+        form = EquipeForm(instance=equipe) # Pré-remplit le formulaire avec les données de l'équipe
+
+    return render(request, 'modifier_equipe.html', {'form': form, 'equipe': equipe})
+
+
+def supprimer_equipe(request, equipe_id):
+    # Récupère l'équipe à supprimer ou renvoie une erreur 404
+    equipe = get_object_or_404(Equipe, id=equipe_id)
+
+    if request.method == 'POST':
+        # La suppression est généralement confirmée via un POST
+        equipe.delete()
+        # Redirigez vers une page de succès ou la liste des équipes
+        return redirect('liste_equipes') # Assurez-vous que cette URL existe
+    
+    else:
+        
+        return redirect('liste_equipes')
+
+
 def liste_equipes(request):
     equipes = Equipe.objects.prefetch_related('membres__personnel')
 
@@ -567,7 +634,8 @@ def supprimer_affectation(request, affectation_id):
 
 def mobiliser_equipes(request, projet_id):
     projet = get_object_or_404(Projet, id=projet_id)
-    equipes = projet.affectationprojet_set.all()
+    equipes = projet.equipe_affectee.all()
+
     return render(request, 'mobilisation.html', {
         'projet': projet,
         'equipes': equipes,
@@ -577,43 +645,52 @@ def mobiliser_equipes(request, projet_id):
 
 def creer_mobilisation(request, projet_id):
     projet = get_object_or_404(Projet, id=projet_id)
-    
-    # Exemple de récupération des équipes déjà affectées à ce projet
+
     equipes_affectees = Equipe.objects.filter(
-        activites_realisees__activite__projet=projet
+        affectations_projet__projet=projet
     ).distinct()
 
     if request.method == 'POST':
         nom_activite = request.POST.get('nom_activite')
-        description = request.POST.get('description')
-        date_debut = request.POST.get('date_debut')
-        date_fin = request.POST.get('date_fin')
-        site = request.POST.get('site')
-        equipe_ids = request.POST.getlist('equipes')
-        statut = request.POST.get('statut', 'Planifiée')  # exemple
-        chef_projet = request.user.chefprojet  # lien avec User supposé
+        description = request.POST.get('description_activite')  
+        date_debut = datetime.strptime(request.POST.get('date_debut_activite'), "%Y-%m-%d").date()
+        date_fin = datetime.strptime(request.POST.get('date_fin_activite'), "%Y-%m-%d").date()
+        site = request.POST.get('site_mobilisation')
+        equipe_ids = request.POST.getlist('equipes_selectionnees') 
 
-        # Création de l'activité
+        # Sécurité : validation d’au moins une équipe
+        if not equipe_ids:
+            messages.error(request, "Veuillez sélectionner au moins une équipe à mobiliser.")
+            return redirect(request.path)
+
+        if date_fin < date_debut:
+            messages.error(request, "La date de fin ne peut pas précéder la date de début.")
+            return redirect(request.path)
+
         activite = Activite.objects.create(
             projet=projet,
             nom=nom_activite,
             description=description,
-            statut=statut,
+            statut="Planifiée",
             date_debut=date_debut,
             date_fin=date_fin,
-            temps_passe=timedelta(),  # vide au départ
+           
         )
 
-        # Création de la mobilisation
         mobilisation = Mobilisation.objects.create(
             activite=activite,
-            chef_projet=chef_projet,
+            chef_projet=request.user.chefprojet,
             date_debut=date_debut,
             date_fin=date_fin,
             site=site
+            
         )
 
-        # Assigner les équipes
+        print("Equipe sélectionnées :", equipe_ids)
+        print("Dates :", date_debut, "->", date_fin)
+        print("Projet :", projet)
+
+
         for equipe_id in equipe_ids:
             Realiser.objects.create(
                 equipe_id=equipe_id,
@@ -621,28 +698,19 @@ def creer_mobilisation(request, projet_id):
                 date=date_debut
             )
 
-        return redirect('mobilisation.html')
+        messages.success(request, "Mobilisation enregistrée avec succès.")
+        return redirect('resume_mobilisation')#activite.id)
+  
 
-    return render(request, 'organiser_mobilisation.html' ,{
+    return render(request, 'organiser_mobilisation.html', {
         'projet': projet,
-        'equipes': equipes_affectees,
+        'equipes_pre_affectees': equipes_affectees,
         
     })
 
 
 
-# from django.db.models import Prefetch
 
-# def organiser_mobilisation(request):
-#     # Charger les projets "en cours" + leurs affectations avec les équipes associées
-#     affectations = Projet.objects.filter(statut='en_cours').prefetch_related(
-#     Prefetch(
-#             'equipe_affectee', 
-#             queryset=AffectationProjet.objects.select_related('equipe')
-#         )
-#     )
-
-#     return render(request, 'mobilisation.html', {'affectations': affectations})
 
 
 def organiser_mobilisation(request):
@@ -669,10 +737,33 @@ def organiser_mobilisation(request):
             'equipes': equipes
         })
 
-   
-
     return render(request, 'mobilisation.html', {'projets_data': data})
 
+
+
+
+def resume_mobilisation(request, mobilisation_id):
+    mobilisation = get_object_or_404(Mobilisation, id=mobilisation_id)
+    activite = mobilisation.activite
+    equipes = mobilisation.activite.equipes_realisation.all()
+
+    return render(request, 'liste_mobilisation.html', {
+        'mobilisation': mobilisation,
+        'activite': activite,
+        'equipes': equipes,
+    })
+
+
+
+def liste_mobilisations(request):
+    mobilisations = Mobilisation.objects.select_related('activite', 'chef_projet').all().order_by('-date_debut')
+    # Précharger les équipes via Realiser et Activite si besoin
+    # Par exemple, pour chaque mobilisation, récupérer les équipes de l'activité
+
+    context = {
+        'mobilisations': mobilisations,
+    }
+    return render(request, 'liste_mobilisations.html', context)
 
 
 

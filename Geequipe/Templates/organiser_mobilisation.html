@@ -1,17 +1,16 @@
-{% extends 'index.html' %} {# Ensure this path is correct for your base template #}
+{% extends 'index.html' %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="text-center mb-4">
-        <h4 class="display-6 fw-bold text-primary">⚡ Organiser une Mobilisation</h4>
+        <h4 class="display-6 fw-bold text-primary">Organiser une Mobilisation</h4>
         <p class="lead text-muted">pour le projet : <strong class="text-dark">{{ projet.nom }}</strong></p>
     </div>
 
-    {# Display Django messages (success, error, etc.) #}
     {% if messages %}
         <div class="my-3">
             {% for message in messages %}
-                <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %} alert-dismissible fade show" role="alert">
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
                     {{ message }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
@@ -20,141 +19,103 @@
     {% endif %}
 
     <form method="post" action="{% url 'mobiliser_equipes' projet.id %}" class="needs-validation" novalidate>
-        {% csrf_token %} {# Essential for Django security #}
+        {% csrf_token %}
 
+        <!-- Section Activité -->
         <fieldset class="border p-4 mb-4 rounded-3 shadow-lg bg-light">
-            <legend class="float-none w-auto px-3 fs-5 text-primary fw-bold">Détails de la Nouvelle Activité</legend>
+            <legend class="float-none w-auto px-3 fs-5 text-primary fw-bold">Détails de l’Activité</legend>
 
             <div class="mb-3">
                 <label for="id_nom_activite" class="form-label">Nom de l'activité <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="id_nom_activite" name="nom_activite" required placeholder="Ex: Développement Fonctionnalité X, Campagne Marketing Q3">
-                <div class="invalid-feedback">
-                    Veuillez fournir un nom pour l'activité.
-                </div>
+                <input type="text" class="form-control" id="id_nom_activite" name="nom_activite" required>
+                <div class="invalid-feedback">Veuillez fournir un nom pour l'activité.</div>
             </div>
 
             <div class="mb-3">
-                <label for="id_description_activite" class="form-label">Description de l'activité <span class="text-danger">*</span></label>
-                <textarea class="form-control" id="id_description_activite" name="description_activite" rows="4" required placeholder="Détaillez les objectifs et les tâches principales de cette activité."></textarea>
-                <div class="invalid-feedback">
-                    Veuillez fournir une description pour l'activité.
-                </div>
+                <label for="id_description_activite" class="form-label">Description <span class="text-danger">*</span></label>
+                <textarea class="form-control" id="id_description_activite" name="description_activite" rows="4" required></textarea>
+                <div class="invalid-feedback">Veuillez fournir une description.</div>
             </div>
 
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label for="id_date_debut_activite" class="form-label">Date de début <span class="text-danger">*</span></label>
                     <input type="date" class="form-control" id="id_date_debut_activite" name="date_debut_activite" required>
-                    <div class="invalid-feedback">
-                        Veuillez choisir une date de début.
-                    </div>
+                    <div class="invalid-feedback">Veuillez choisir une date de début.</div>
                 </div>
                 <div class="col-md-6 mb-3">
                     <label for="id_date_fin_activite" class="form-label">Date de fin <span class="text-danger">*</span></label>
                     <input type="date" class="form-control" id="id_date_fin_activite" name="date_fin_activite" required>
-                    <div class="invalid-feedback">
-                        Veuillez choisir une date de fin.
-                    </div>
+                    <div class="invalid-feedback">Veuillez choisir une date de fin.</div>
                 </div>
             </div>
 
             <div class="mb-3">
-                <label for="id_site_mobilisation" class="form-label">Site de mobilisation <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="id_site_mobilisation" name="site_mobilisation" required placeholder="Ex: Bureau principal, Site client, Télétravail">
-                <div class="invalid-feedback">
-                    Veuillez spécifier un site de mobilisation.
-                </div>
+                <label for="id_site_mobilisation" class="form-label">Site <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="id_site_mobilisation" name="site_mobilisation" required>
+                <div class="invalid-feedback">Veuillez spécifier un site.</div>
             </div>
         </fieldset>
 
+        <!-- Section Équipes Affectées -->
         <fieldset class="border p-4 mb-4 rounded-3 shadow-lg bg-light">
-            <legend class="float-none w-auto px-3 fs-5 text-primary fw-bold">Sélection des Équipes à Mobiliser</legend>
+            <legend class="float-none w-auto px-3 fs-5 text-primary fw-bold">Équipes Affectées au Projet</legend>
 
             {% if equipes_pre_affectees %}
-                <h6 class="mt-3 text-secondary">Équipes déjà associées à ce projet :</h6>
-                <p class="text-muted small">Ces équipes sont déjà intervenues sur d'autres activités de ce projet et sont pré-sélectionnées pour votre commodité.</p>
-                <div class="row g-2 mb-3"> {# Use g-2 for smaller gutter #}
+                <p class="text-muted mb-3">Cochez les équipes que vous souhaitez mobiliser pour cette activité.</p>
+                <div class="row g-2">
                     {% for equipe in equipes_pre_affectees %}
                         <div class="col-md-4 col-sm-6">
                             <div class="form-check p-3 border rounded-3 bg-white shadow-sm d-flex align-items-center">
-                                <input class="form-check-input mt-0 me-2" type="checkbox" name="equipes_selectionnees" value="{{ equipe.id }}" id="equipe_pre_{{ equipe.id }}" checked>
-                                <label class="form-check-label flex-grow-1" for="equipe_pre_{{ equipe.id }}">
-                                    <strong class="text-dark">{{ equipe.nom }}</strong> <br>
-                                    <small class="text-success"><i class="bi bi-check-circle-fill"></i> Présente sur le projet</small>
-                                </label>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-                {% if autres_equipes_disponibles %}<hr class="my-4">{% endif %}
-            {% else %}
-                <p class="alert alert-info border-info">
-                    <i class="bi bi-info-circle-fill me-2"></i> Aucune équipe n'a encore été associée à ce projet.
-                </p>
-            {% endif %}
-
-            {% if autres_equipes_disponibles %}
-                <h6 class="mt-3 text-secondary">Autres équipes disponibles :</h6>
-                <p class="text-muted small">Sélectionnez d'autres équipes si nécessaire.</p>
-                <div class="row g-2">
-                    {% for equipe in autres_equipes_disponibles %}
-                        <div class="col-md-4 col-sm-6">
-                            <div class="form-check p-3 border rounded-3 bg-white shadow-sm d-flex align-items-center">
-                                <input class="form-check-input mt-0 me-2" type="checkbox" name="equipes_selectionnees" value="{{ equipe.id }}" id="equipe_autre_{{ equipe.id }}">
-                                <label class="form-check-label flex-grow-1" for="equipe_autre_{{ equipe.id }}">
+                                <input class="form-check-input mt-0 me-2" type="checkbox" name="equipes_selectionnees" value="{{ equipe.id }}" id="equipe_{{ equipe.id }}">
+                                <label class="form-check-label flex-grow-1" for="equipe_{{ equipe.id }}">
                                     <strong class="text-dark">{{ equipe.nom }}</strong>
                                 </label>
                             </div>
                         </div>
                     {% endfor %}
                 </div>
-            {% endif %}
-
-            {% if not equipes_pre_affectees and not autres_equipes_disponibles %}
-                <p class="alert alert-warning border-warning">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i> Aucune équipe n'est actuellement disponible dans le système. Veuillez en créer pour pouvoir mobiliser.
+            {% else %}
+                <p class="alert alert-warning border-warning mt-3">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> Aucune équipe n’est actuellement affectée à ce projet.
                 </p>
             {% endif %}
-
-            <small class="form-text text-muted mt-3 d-block text-end">Les champs marqués d'un (<span class="text-danger">*</span>) sont obligatoires.</small>
         </fieldset>
 
         <div class="d-flex justify-content-between mt-4">
             <button type="submit" class="btn btn-success btn-lg px-5">
-                <i class="bi bi-lightning-charge-fill me-2"></i> Organiser la Mobilisation
+                <i class="bi bi-lightning-charge-fill me-2"></i> Mobiliser
             </button>
-            <a href="#" class="btn btn-secondary btn-lg px-5">
+            <a href="{% url 'resume_mobilisation'  %}" class="btn btn-secondary btn-lg px-5">
                 <i class="bi bi-x-circle-fill me-2"></i> Annuler
             </a>
         </div>
     </form>
 </div>
 
-{# JavaScript for Bootstrap form validation #}
+<!-- Validation JS -->
 <script>
     (function () {
-        'use strict'
-        var forms = document.querySelectorAll('.needs-validation')
-        Array.prototype.slice.call(forms)
-            .forEach(function (form) {
-                form.addEventListener('submit', function (event) {
-                    // Check if at least one team is selected
-                    const selectedTeams = document.querySelectorAll('input[name="equipes_selectionnees"]:checked');
-                    if (selectedTeams.length === 0) {
-                        alert("Veuillez sélectionner au moins une équipe à mobiliser.");
-                        event.preventDefault();
-                        event.stopPropagation();
-                        return; // Stop form submission
-                    }
+        'use strict';
+        var forms = document.querySelectorAll('.needs-validation');
 
-                    if (!form.checkValidity()) {
-                        event.preventDefault()
-                        event.stopPropagation()
-                    }
+        Array.prototype.slice.call(forms).forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                const selectedTeams = document.querySelectorAll('input[name="equipes_selectionnees"]:checked');
+                if (selectedTeams.length === 0) {
+                    alert("Veuillez sélectionner au moins une équipe à mobiliser.");
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
 
-                    form.classList.add('was-validated')
-                }, false)
-            })
-    })()
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+
+                form.classList.add('was-validated');
+            }, false);
+        });
+    })();
 </script>
 {% endblock %}

@@ -1,0 +1,64 @@
+{% extends 'index.html' %}
+
+{% block content %}
+<div class="container my-5 p-4 bg-white shadow-sm rounded">
+    <div class="row align-items-center mb-4">
+        <div class="col-md-9">
+            <h2 class="text-primary fw-bold mb-1">Résumé Détaillé de la Mobilisation</h2>
+            <p class="lead text-muted">Aperçu complet des informations clés de votre activité.</p>
+        </div>
+        <div class="col-md-3 text-end">
+            <a href="#" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i> Retour
+            </a>
+        </div>
+    </div>
+
+    <hr class="my-4">
+
+    <div class="row g-4 mb-4">
+        <div class="col-md-6">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title text-success mb-3"><i class="bi bi-geo-alt-fill me-2"></i>Détails de l'Activité</h5>
+                    <p class="card-text mb-2"><strong>Nom de l'Activité :</strong> <span class="text-dark">{{ activite.nom }}</span></p>
+                    {# Nouvelle ligne pour afficher le nom du projet #}
+                    <p class="card-text mb-2"><strong>Projet Associé :</strong> <span class="text-dark">{{ activite.projet.nom|default:"Non spécifié" }}</span></p>
+                    <p class="card-text"><strong>Description :</strong> <span class="text-muted fst-italic">{{ activite.description|default:"Non spécifiée" }}</span></p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title text-info mb-3"><i class="bi bi-calendar-check-fill me-2"></i>Période et Localisation</h5>
+                    <p class="card-text mb-2"><strong>Dates de Mobilisation :</strong> <span class="text-dark">{{ mobilisation.date_debut }} <i class="bi bi-arrow-right mx-1"></i> {{ mobilisation.date_fin }}</span></p>
+                    <p class="card-text"><strong>Site d'Intervention :</strong> <span class="text-dark">{{ mobilisation.site }}</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <h5 class="card-title text-warning mb-3"><i class="bi bi-people-fill me-2"></i>Équipes Mobilisées</h5>
+            {% if equipes %}
+            <ul class="list-group list-group-flush rounded">
+                {% for equipe in equipes %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span class="fw-medium">{{ equipe.equipe.nom }}</span>
+                    <span class="badge bg-light text-secondary rounded-pill">Affectée</span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-muted fst-italic">Aucune équipe n'est actuellement mobilisée pour cette activité.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="text-center mt-5">
+        <p class="text-muted small">Pour toute modification ou information supplémentaire, veuillez contacter l'administrateur.</p>
+    </div>
+</div>
+{% endblock %}

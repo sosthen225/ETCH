@@ -61,12 +61,65 @@ class MembreForm(forms.ModelForm):
                 competences_possedees__competence__libelle=competence
             ).distinct()
 
+
+
+
 class BaseMembreFormSet(BaseModelFormSet):
     def clean(self):
-        super().clean()
-        total_forms = len([form for form in self.forms if form.cleaned_data and not form.cleaned_data.get('DELETE', False)])
+        super().clean() # Appelez d'abord la méthode clean du formset de base
+
+        # Votre validation existante pour le nombre total de formulaires
+        total_forms = 0
+        for form in self.forms:
+            # Compte seulement les formulaires avec des données nettoyées et non marqués pour suppression
+            if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                total_forms += 1
+        
         if total_forms < 3 or total_forms > 5:
             raise forms.ValidationError("Vous devez sélectionner entre 3 et 5 membres pour l'équipe.")
+
+        # Maintenant, ajoutez la validation spécifique pour la compétence "Chauffeur" et le rôle
+        chauffeur_competence = None
+        try:
+            chauffeur_competence = Competence.objects.get(libelle="Chauffeur")
+        except Competence.DoesNotExist:
+            # Si la compétence "Chauffeur" n'existe pas, loguer un avertissement et sauter la validation spécifique
+            print("AVERTISSEMENT: La compétence 'Chauffeur' n'a pas été trouvée. La validation de rôle a été ignorée.")
+            pass # Ou lever une erreur spécifique si "Chauffeur" est obligatoire pour votre logique
+
+        for form in self.forms:
+            # Ignore les formulaires vides ou ceux marqués pour suppression
+            if self.can_delete and form.cleaned_data.get('DELETE', False):
+                continue 
+            if not form.cleaned_data: # Formulaire vide
+                continue
+
+            personnel = form.cleaned_data.get('personnel')
+            role = form.cleaned_data.get('role')
+
+            if not personnel:
+                # Si le personnel n'est pas sélectionné, mais d'autres données sont là, gérer l'erreur
+                form.add_error('personnel', "Le membre du personnel doit être sélectionné.")
+                continue # Passe au formulaire suivant
+
+            # Vérifie si le personnel sélectionné a la compétence "Chauffeur"
+            is_chauffeur = False
+            if chauffeur_competence: # Seulement si la compétence "Chauffeur" existe dans la BD
+                # Vérifie la relation Posseder
+                if Posseder.objects.filter(personnel=personnel, competence=chauffeur_competence).exists():
+                    is_chauffeur = True
+
+            if is_chauffeur:
+                # Si le personnel EST un chauffeur, le rôle DOIT être "Chauffeur"
+                if role != 'Chauffeur':
+                    form.add_error('role', "Le rôle doit être 'Chauffeur' pour ce membre du personnel.")
+                    # Optionnel: si vous avez rendu le champ readonly, vous pourriez vouloir forcer la valeur ici
+                    # form.instance.role = 'Chauffeur'
+            else:
+                # Si le personnel N'EST PAS un chauffeur, le rôle NE DOIT PAS être "Chauffeur"
+                if role == 'Chauffeur':
+                    form.add_error('role', "Ce membre du personnel ne possède pas la compétence 'Chauffeur' et ne peut pas avoir ce rôle.")
+
 
 MembreFormSet = modelformset_factory(
     Membre,
@@ -76,9 +129,111 @@ MembreFormSet = modelformset_factory(
     max_num=5,
     validate_max=True,
     can_delete=False,
-    
 )
 
+
+# class MembreForm(forms.ModelForm):
+#     class Meta:
+#         model = Membre
+#         fields = ['personnel', 'role'] 
+
+#     def __init__(self, *args, **kwargs):
+#         # Récupère l'ID du personnel déjà sélectionné (si c'est un formulaire existant)
+#         initial_personnel_id = kwargs.get('instance') and kwargs.get('instance').personnel_id
+
+#         super().__init__(*args, **kwargs)
+
+#         # 1. Pré-filtrage du queryset du personnel au chargement initial du formulaire
+#         # Par défaut, afficher tous les personnels, mais cette logique sera surtout gérée par JS.
+#         self.fields['personnel'].queryset = Personnel.objects.all() 
+        
+#         # 2. Applique les règles du rôle de chauffeur si un personnel est déjà associé
+#         if initial_personnel_id:
+#             personnel_instance = Personnel.objects.get(id=initial_personnel_id)
+#             self._apply_chauffeur_rules_to_role_field(personnel_instance)
+            
+#         # Ajoutez des classes CSS pour faciliter le ciblage par JavaScript
+#         self.fields['personnel'].widget.attrs['class'] = 'select-personnel-membre'
+#         self.fields['role'].widget.attrs['class'] = 'select-role-membre'
+
+#     def _apply_chauffeur_rules_to_role_field(self, personnel_instance):
+#         """
+#         Rend le champ 'role' en lecture seule et le pré-remplit avec 'Chauffeur'
+#         si le personnel a la compétence 'Chauffeur'.
+#         """
+#         try:
+#             chauffeur_competence = Competence.objects.get(libelle="Chauffeur")
+            
+#             if Posseder.objects.filter(personnel=personnel_instance, competence=chauffeur_competence).exists():
+#                 self.fields['role'].initial = 'Chauffeur'
+#                 self.fields['role'].widget.attrs['readonly'] = True
+#                 self.fields['role'].widget.attrs['disabled'] = True # Désactive pour éviter l'envoi de la valeur (JS devra la gérer)
+#                 self.fields['role'].choices = [('Chauffeur', 'Chauffeur')] # N'affiche que "Chauffeur"
+#                 self.fields['role'].widget.attrs['title'] = "Ce rôle est défini automatiquement car le membre est un chauffeur."
+#             else:
+#                 # Si le personnel n'est PAS un chauffeur, assurez-vous que le champ 'role' n'est pas limité
+#                 # au cas où il aurait été rendu 'disabled' ou 'readonly' par erreur
+#                 self.fields['role'].widget.attrs.pop('readonly', None)
+#                 self.fields['role'].widget.attrs.pop('disabled', None)
+#                 # Réinitialisez les choix si vous les aviez limités dynamiquement
+#                 # self.fields['role'].choices = ROLES_CHOICES # (nécessite d'importer ROLES_CHOICES de votre modèle Membre)
+#         except Competence.DoesNotExist:
+#             print("AVERTISSEMENT: La compétence 'Chauffeur' n'a pas été trouvée dans la base de données.")
+#             pass
+
+# # Votre BaseMembreFormSet (la validation forte côté serveur) reste inchangée
+# class BaseMembreFormSet(BaseModelFormSet):
+#     def clean(self):
+#         super().clean() 
+
+#         total_forms = 0
+#         for form in self.forms:
+#             if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+#                 total_forms += 1
+        
+#         if total_forms < 3 or total_forms > 5:
+#             raise forms.ValidationError("Vous devez sélectionner entre 3 et 5 membres pour l'équipe.")
+
+#         chauffeur_competence = None
+#         try:
+#             chauffeur_competence = Competence.objects.get(libelle="Chauffeur")
+#         except Competence.DoesNotExist:
+#             print("AVERTISSEMENT: La compétence 'Chauffeur' n'a pas été trouvée. La validation de rôle a été ignorée.")
+#             pass
+
+#         for form in self.forms:
+#             if not form.cleaned_data or (self.can_delete and form.cleaned_data.get('DELETE', False)):
+#                 continue 
+
+#             personnel = form.cleaned_data.get('personnel')
+#             role = form.cleaned_data.get('role')
+
+#             if not personnel:
+#                 form.add_error('personnel', "Le membre du personnel doit être sélectionné.")
+#                 continue 
+
+#             is_chauffeur = False
+#             if chauffeur_competence:
+#                 if Posseder.objects.filter(personnel=personnel, competence=chauffeur_competence).exists():
+#                     is_chauffeur = True
+
+#             # -- Logique de validation bidirectionnelle ici --
+#             if is_chauffeur:
+#                 if role != 'Chauffeur':
+#                     form.add_error('role', "Le rôle doit être 'Chauffeur' pour ce membre du personnel.")
+#             else: # Personnel n'est pas chauffeur
+#                 if role == 'Chauffeur':
+#                     form.add_error('role', "Ce membre du personnel ne possède pas la compétence 'Chauffeur' et ne peut pas avoir ce rôle.")
+
+# MembreFormSet = modelformset_factory(
+#     Membre,
+#     form=MembreForm,
+#     formset=BaseMembreFormSet,
+#     extra=5,
+#     max_num=5,
+#     validate_max=True,
+#     can_delete=False,
+# )
 
 
 class ModifierPersonnelForm(forms.ModelForm):

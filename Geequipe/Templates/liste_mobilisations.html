@@ -1,0 +1,61 @@
+{% extends 'index.html' %}
+
+{% block content %}
+<div class="text-center mb-4">
+    <h4 class="display-6 fw-bold text-primary">Liste des Mobilisations</h4>
+</div>
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+
+<table id="table_mobilisations" class="table table-bordered table-hover table-striped">
+    <thead class="thead-dark">
+        <tr>
+            <th>Projet</th>
+            <th>Activité</th>
+            <th>Chef de projet</th>
+            <th>Équipes mobilisées</th>
+            <th>Date début</th>
+            <th>Date fin</th>
+            <th>Site</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for m in mobilisations %}
+        <tr>
+            <td>{{ m.activite.projet.nom }}</td>
+            <td>{{ m.activite.nom }}</td>
+            <td>{{ m.chef_projet.user.get_full_name }}</td>
+            <td>
+                {% for realiser in m.activite.realiser_set.all %}
+                    {{ realiser.equipe.nom }}{% if not forloop.last %}, {% endif %}
+                {% empty %}
+                    <span class="text-muted">Aucune équipe</span>
+                {% endfor %}
+            </td>
+            <td>{{ m.date_debut }}</td>
+            <td>{{ m.date_fin }}</td>
+            <td>{{ m.site }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    $('#table_mobilisations').DataTable({
+        language: {
+            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json'
+        },
+        paging: true,
+        searching: true,
+        ordering: true,
+        order: [[4, 'desc']]  // Trier par date début décroissante
+    });
+});
+</script>
+
+{% endblock %}
