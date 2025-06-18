@@ -1,6 +1,6 @@
 from django.urls import include, path, reverse_lazy
 from ETCH import settings
-from Geequipe.views import affecter_equipe, ajouter_projet, creer_equipe, creer_mobilisation, enregistrer_agent, equipes_disponibles, get_competences_certificats, index, liste_equipes, liste_mobilisations, login_page, logout_view, mobiliser_equipes, modifier_agent, modifier_equipe, modifier_projet, organiser_mobilisation, projet_json, projets_disponibles, resume_mobilisation, search_results, supprimer_affectation, supprimer_agent, supprimer_equipe, supprimer_projet, tabpersonels, tabprojet, voir_certificats
+from Geequipe.views import affecter_equipe, ajouter_projet, changer_statut_activite, changer_statut_personnel, creer_equipe, creer_mobilisation, enregistrer_agent, equipes_disponibles,  index, liste_activites, liste_equipes, liste_mobilisations, login_page, logout_view, mobiliser_equipes, modifier_agent, modifier_equipe, modifier_projet, organiser_mobilisation, projets_disponibles, resume_mobilisation, search_results, supprimer_affectation, supprimer_agent, supprimer_equipe, supprimer_projet, tabpersonels, tabprojet, voir_certificats
 from django.contrib.auth import views as auth_views
 from django.conf.urls.static import static
 
@@ -16,6 +16,7 @@ urlpatterns = [
     path('ajouter_projet/', ajouter_projet, name='ajouter_projet'),
     path('modifier_projet/<int:id>/', modifier_projet, name='modifier_projet'),
     path('supprimer_projet/<int:id>/', supprimer_projet, name='supprimer_projet'),
+   
 
     #path('projets/<int:projet_id>/json/', projet_json, name='projet_json'),
     #path('projets/<int:id>/modifier/', modifier_projet, name='modifier_projet')
@@ -24,7 +25,8 @@ urlpatterns = [
     path('api/enregistrer-agent/', enregistrer_agent, name='enregistrer_agent'),
     path('/accueil/personels/modifier_agent/<int:agent_id>/', modifier_agent, name='modifier_agent'),
     path('agents/supprimer/<int:agent_id>/',supprimer_agent, name='supprimer_agent'),
-    
+    path('projets/<int:agent_id>/changer-statut/',changer_statut_personnel, name='changer_statut_agent'),
+
 
     path('details_certificat/<int:personnel_id>/', voir_certificats, name='voir_certificats'),
     
@@ -40,7 +42,11 @@ urlpatterns = [
          
     path('mobiliser_equipes/<int:projet_id>/', mobiliser_equipes, name='mobiliser_equipes'),
     path('resume_mobilisation/',resume_mobilisation, name='resume_mobilisation'),
-     path('liste_mobilisations/', liste_mobilisations, name='liste_mobilisations'),
+    path('liste_mobilisations/', liste_mobilisations, name='liste_mobilisations'),
+
+    path('activites/', liste_activites, name='liste_activites'),
+    path('activites/<int:activite_id>/changer-statut/',changer_statut_activite, name='changer_statut_activite'),
+
 
 
 

@@ -26,7 +26,7 @@
             <td>{{ m.activite.nom }}</td>
             <td>{{ m.chef_projet.user.get_full_name }}</td>
             <td>
-                {% for realiser in m.activite.realiser_set.all %}
+                {% for realiser in m.activite.prefetched_equipes_realisation %}
                     {{ realiser.equipe.nom }}{% if not forloop.last %}, {% endif %}
                 {% empty %}
                     <span class="text-muted">Aucune équipe</span>

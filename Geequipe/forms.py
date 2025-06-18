@@ -1,7 +1,7 @@
 # forms.py
 from datetime import timezone
 from django import forms
-from .models import COMPETENCE_CHOICES, AffectationProjet, Certificat, Competence, Expatriation, PaysAffectation, Posseder, Projet, Client
+from .models import COMPETENCE_CHOICES, Activite, AffectationProjet, Certificat, Competence, Expatriation, Livrable, Mobilisation, PaysAffectation, Posseder, Projet, Client, Realiser
 
 class ProjetForm(forms.ModelForm):
     client_nom = forms.CharField(label="Nom du client", max_length=100)
@@ -407,3 +407,95 @@ class AffectationProjetForm(forms.ModelForm):
                 self.fields['equipe'].queryset = Equipe.objects.exclude(id__in=equipe_ids_exclues)
             except (ValueError, TypeError):
                 pass  # Données invalides, pas de filtrage
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class ActiviteForm(forms.ModelForm):
+    class Meta:
+        model = Activite
+        fields = ['nom', 'description', 'date_debut', 'date_fin']
+        widgets = {
+            'date_debut': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'date_fin': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'nom': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+        }
+        labels = {
+            'nom': 'Nom de l\'activité',
+            'description': 'Description',
+            'date_debut': 'Date de début',
+            'date_fin': 'Date de fin',
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        date_debut = cleaned_data.get('date_debut')
+        date_fin = cleaned_data.get('date_fin')
+
+        if date_debut and date_fin and date_fin < date_debut:
+            raise ValidationError("La date de fin ne peut pas précéder la date de début.")
+        return cleaned_data
+
+class MobilisationForm(forms.ModelForm):
+    class Meta:
+        model = Mobilisation
+        fields = ['site', 'date_debut', 'date_fin'] # date_debut et date_fin sont redondantes ici si elles sont tirées de l'activité.
+                                                  # Si elles sont spécifiques à la mobilisation, gardez-les.
+                                                  # Sinon, vous pouvez les retirer et les définir à partir de l'activité dans la vue.
+        widgets = {
+            'site': forms.TextInput(attrs={'class': 'form-control'}),
+            'date_debut': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'date_fin': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        }
+        labels = {
+            'site': 'Site de mobilisation',
+            'date_debut': 'Date de début de mobilisation',
+            'date_fin': 'Date de fin de mobilisation',
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        date_debut = cleaned_data.get('date_debut')
+        date_fin = cleaned_data.get('date_fin')
+
+        if date_debut and date_fin and date_fin < date_debut:
+            raise ValidationError("La date de fin de mobilisation ne peut pas précéder la date de début.")
+        return cleaned_data
+
+class RealiserForm(forms.ModelForm):
+    class Meta:
+        model = Realiser
+        fields = ['equipe']
+        widgets = {
+            'equipe': forms.Select(attrs={'class': 'form-control'}),
+            
+        }
+
+    def __init__(self, *args, **kwargs):
+        equipes_choices = kwargs.pop('equipes_choices', None)
+        super().__init__(*args, **kwargs)
+        if equipes_choices:
+            self.fields['equipe'].queryset = Equipe.objects.filter(id__in=equipes_choices)
+            # Ou simplement : self.fields['equipe'].queryset = equipes_choices
+
+class LivrableForm(forms.ModelForm):
+    class Meta:
+        model = Livrable
+        fields = ['nom_livrable']
+        widgets = {
+            'nom_livrable': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+        labels = {
+            'nom_livrable': 'Nom du livrable',
+        }

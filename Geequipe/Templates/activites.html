@@ -1,0 +1,90 @@
+{% extends 'index.html' %}
+{% load static %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<div class="container mt-4">
+    <h3 class="text-center mb-4">Liste des Activités</h3>
+
+    <table id="activitesTable" class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Activité</th>
+                <th>Livrables</th>
+                <th>Equipes</th>
+                <th>Date de debut</th>
+                <th>Projet</th>
+                <th>chef de projet</th>
+                <th>Statut</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for activite in activites %}
+            <tr data-id="{{ activite.id }}">
+                <td>{{ activite.nom }}</td>
+                <td>
+                <ul>
+                  {% for livrable in activite.livrables.all %}
+                <li>{{ livrable.nom_livrable }}</li>
+                 {% empty %}
+                    <li>Aucun livrable</li>
+                  {% endfor %}
+                </ul>
+                </td>
+
+                <td>
+                {% for realisation in activite.equipes_realisation.all %}
+                    <span >{{ realisation.equipe.nom }}</span><br>
+                {% empty %}
+                    <em>Non attribuée</em>
+                {% endfor %}
+            </td>
+                <td>{{ activite.date_debut }}</td>
+                <td>{{ activite.projet.nom }}</td>
+                <td>{{ activite.projet.chef_projet.user.get_full_name }}</td>
+                <td>
+                    <select class="form-select form-select-sm statut-select">
+                        {% for key, label in statut_choices %}
+                            <option value="{{ key }}" {% if activite.statut == key %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+    $(document).ready(function () {
+        $('#activitesTable').DataTable();
+
+        // Gérer changement de statut
+        $('.statut-select').on('change', function () {
+            const row = $(this).closest('tr');
+            const activiteId = row.data('id');
+            const nouveauStatut = $(this).val();
+            const csrfToken = '{{ csrf_token }}';
+
+            $.ajax({
+                url: `/activites/${activiteId}/changer-statut/`,
+                method: 'POST',
+                data: {
+                    statut: nouveauStatut,
+                    csrfmiddlewaretoken: csrfToken
+                },
+                success: function (response) {
+                    console.log(response.message);
+                },
+                error: function (xhr) {
+                    alert('Erreur : ' + xhr.responseJSON.message);
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

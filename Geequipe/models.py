@@ -42,6 +42,22 @@ ROLE_CHOICES = [
     ("chef d'equipe", "Chef d'equipe")
 ]
 
+STATUT_PERSONNEL_CHOICES = [
+    ('DISPONIBLE', 'Disponible'),
+    ('ACTIF', 'Actif'),
+    ('CONGE', 'En congé'),
+    ('SUSPENDU', 'Suspendu'),
+    ('MISSION', 'En mission')
+]
+
+
+STATUT_ACTIVITIES_CHOICES = [
+    ('en cours', 'En cours'),
+    ('terminée', 'Terminée'),
+    ('planifiée' , 'planifiée'),
+    ('suspendue','Suspendue') ]
+
+
 # ----------- MODELES -----------
 
 class PaysAffectation(models.Model):
@@ -52,14 +68,20 @@ class PaysAffectation(models.Model):
 
 
 class Personnel(models.Model):
+    
     nom = models.CharField(max_length=100)
     prenoms = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
     telephone = models.CharField(max_length=10,unique=True)
     nationalite = models.CharField(max_length=50)
-    statut = models.CharField (max_length=50, choices=[('actif', 'Actif'), ('inactif', 'Inactif'),('en mission','En mission'),('en disponibilité','En disponibilité'),('en congé','En congé')] ,default='actif')
+    statut = models.CharField (max_length=50, choices= STATUT_PERSONNEL_CHOICES ,default='actif')
     residence = models.CharField(max_length=100)
     competences = models.ManyToManyField('Competence', through='Posseder', related_name='personnel')
+
+    @property
+    def statut_choices(self):
+        return self.STATUT_CHOICES
+    
     def __str__(self):
         return f"{self.prenoms} {self.nom}"
     def get_pays_affectation_actuelle(self):
@@ -151,10 +173,10 @@ class Activite(models.Model):
     projet = models.ForeignKey('Projet', on_delete=models.CASCADE, related_name='activites')
     nom = models.CharField(max_length=100)
     description = models.TextField()
-    statut = models.CharField(max_length=50, choices=[('en cours', 'En cours'), ('terminé', 'Terminé'), ('planifiée' , 'planifiée'),('suspendu','Suspendu') ], default='planifiée')
+    statut = models.CharField(max_length=20,choices=STATUT_ACTIVITIES_CHOICES, default='planifiée')
     date_debut = models.DateField()
     date_fin = models.DateField()
-    temps_passe = models.DurationField()
+    temps_passe = models.DurationField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -205,7 +227,7 @@ class Certificat(models.Model):
 class Realiser(models.Model):
     equipe = models.ForeignKey('Equipe', on_delete=models.CASCADE, related_name='activites_realisees')
     activite = models.ForeignKey('Activite', on_delete=models.CASCADE, related_name='equipes_realisation')
-    date = models.DateField()
+    date = models.DateField(auto_now=True)
 
     def __str__(self):
         return f"{self.equipe} a réalisé {self.activite}"

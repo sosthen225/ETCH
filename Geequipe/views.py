@@ -1,10 +1,10 @@
 from urllib import request
-from django.forms import ValidationError
+from django.forms import ValidationError, formset_factory
 from django.shortcuts import get_object_or_404, render
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
 from django.contrib import messages
-from Geequipe.forms import AffectationProjetForm, EquipeForm, MembreFormSet, ModifierPersonnelForm, ProjetForm
+from Geequipe.forms import ActiviteForm, AffectationProjetForm, EquipeForm, LivrableForm, MembreFormSet, MobilisationForm, ModifierPersonnelForm, ProjetForm
 from Geequipe.models import ChefProjet, Projet , Client
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -22,7 +22,7 @@ from Geequipe.models import ChefProjet, Projet, Client
 import json
 from datetime import datetime
 from django.http import JsonResponse
-from .models import COMPETENCE_CHOICES, PAYS_CHOICES, Activite, AffectationProjet, Certificat, Competence, Equipe, Expatriation, Membre, Mobilisation, PaysAffectation, Personnel, Projet, Client, Posseder, Realiser
+from .models import COMPETENCE_CHOICES, PAYS_CHOICES, STATUT_ACTIVITIES_CHOICES, STATUT_PERSONNEL_CHOICES, Activite, AffectationProjet, Certificat, Competence, Equipe, Expatriation, Membre, Mobilisation, PaysAffectation, Personnel, Projet, Client, Posseder, Realiser
 from django.contrib.auth import get_user_model
 User = get_user_model()
 import json
@@ -67,6 +67,9 @@ def login_page(request):
 
 
 
+
+
+
 def index(request):
 
      # --- Mettre à jour le statut des projets avant de les récupérer ---
@@ -105,7 +108,8 @@ def index(request):
 ).order_by('date_fin')
     
     #all_mobilisations = Mobilisation.objects.all().order_by('-date_debut')
-    planned_mobilisations = Mobilisation.objects.filter(statut__in=['planifié'] ).order_by('date_debut') 
+    #planned_mobilisations = Mobilisation.objects.filter(statut__in=['planifié'] ).order_by('date_debut')
+    planned_activities =Activite.objects.filter(statut='planifiée' ,projet__statut='en_cours').order_by('date_debut')
 
 
     # # Pour les notifications : Certifications du personnel expirant bientôt (par exemple, dans les 30 jours)
@@ -123,7 +127,8 @@ def index(request):
         'completed_projects_list': completed_projects_list,
         'upcoming_projects': upcoming_projects,
         'projet_encours': projet_encours,
-        'planned_mobilisations':planned_mobilisations
+        'planned_activities': planned_activities
+        #'planned_mobilisations':planned_mobilisations
        # 'expiring_personnel': expiring_personnel,
     }
     return render(request, 'index.html',context)
@@ -139,6 +144,7 @@ def tabpersonels(request):
     return render(request, 'data_personels.html',{ 'competences': COMPETENCE_CHOICES,
         'agents': agents,
         'pays_liste':  PAYS_CHOICES,
+        'STATUT_PERSONNEL_CHOICES': STATUT_PERSONNEL_CHOICES,
         'certificats': Certificat.objects.all(),})
 
 
@@ -151,7 +157,24 @@ def tabprojet(requests):
         'projets': projets,
         'chefs_de_projet': chefs_de_projet,
         'clients': clients,
+       
     })
+
+
+
+
+def changer_statut_personnel(request, agent_id):
+    if request.method == 'POST':
+        agent = get_object_or_404(Personnel, id=agent_id)
+        nouveau_statut = request.POST.get('statut')
+        if nouveau_statut in dict(STATUT_PERSONNEL_CHOICES):
+            agent.statut = nouveau_statut
+            agent.save()
+            messages.success(request, "Statut de l'agent mis à jour.")
+        else:
+            messages.error(request, 'Statut non valide.')
+    return redirect('tabpersonels') 
+
 
 
 
@@ -395,51 +418,6 @@ def modifier_agent(request, agent_id):
     })
     
     
-    
-# from django.http import JsonResponse
-# from .models import Personnel
-
-# def get_agent_data(request, agent_id):
-#     agent = get_object_or_404(Personnel, id=agent_id)
-
-#     data = {
-#         'id': agent.id,
-#         'nom': agent.nom,
-#         'prenoms': agent.prenoms,
-#         'email': agent.email,
-#         'telephone': agent.telephone,
-#         'nationalite': agent.nationalite,
-#         'statut': agent.statut,
-#         'residence': agent.residence,
-#         'pays_affectation_actuelle': agent.pays_affectation_actuelle,
-#         'competences': list(agent.competences.values_list('id', flat=True)),
-#         'certificats': [
-#             {
-#                 'id': cert.id,
-#                 'libelle': cert.libelle,
-#                 'type': cert.type,
-#                 'date_obtention': cert.date_obtention.strftime('%Y-%m-%d') if cert.date_obtention else '',
-#                 'date_validite': cert.date_validite.strftime('%Y-%m-%d') if cert.date_validite else '',
-#                 'organisme': cert.organisme,
-#                 'fichier_url': cert.fichier.url if cert.fichier else ''
-#             } for cert in agent.certificats.all()
-#         ]
-#     }
-
-#     return JsonResponse(data)  
-    
-# def modifier_agent(request, agent_id):
-#     agent = get_object_or_404(Personnel, id=agent_id)
-
-#     if request.method == 'POST':
-#         form = ModifierPersonnelForm(request.POST, request.FILES, instance=agent)
-#         if form.is_valid():
-#             form.save()
-#             return JsonResponse({'success': True})
-#         else:
-#             return JsonResponse({'success': False, 'errors': form.errors}, status=400)
-    
-#     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 
 @require_POST
@@ -645,68 +623,102 @@ def mobiliser_equipes(request, projet_id):
 
 def creer_mobilisation(request, projet_id):
     projet = get_object_or_404(Projet, id=projet_id)
+    equipes_pre_affectees = Equipe.objects.filter(affectations_projet__projet=projet).distinct()
 
-    equipes_affectees = Equipe.objects.filter(
-        affectations_projet__projet=projet
-    ).distinct()
+    # Formset pour Realiser (liaison Activité-Équipe)
+    # Nous aurons besoin d'un formulaire pour chaque équipe sélectionnée.
+    # Pour l'instant, on va gérer la sélection des équipes via le template directement
+    # et créer les objets Realiser dans la vue.
+
+    # Formset pour Livrables
+    LivrableFormSet = formset_factory(LivrableForm, extra=1, can_delete=True)
 
     if request.method == 'POST':
-        nom_activite = request.POST.get('nom_activite')
-        description = request.POST.get('description_activite')  
-        date_debut = datetime.strptime(request.POST.get('date_debut_activite'), "%Y-%m-%d").date()
-        date_fin = datetime.strptime(request.POST.get('date_fin_activite'), "%Y-%m-%d").date()
-        site = request.POST.get('site_mobilisation')
-        equipe_ids = request.POST.getlist('equipes_selectionnees') 
+        activite_form = ActiviteForm(request.POST)
+        mobilisation_form = MobilisationForm(request.POST)
+        livrable_formset = LivrableFormSet(request.POST, prefix='livrable')
+        equipe_ids = request.POST.getlist('equipes_selectionnees')
 
-        # Sécurité : validation d’au moins une équipe
+        # Validation des équipes sélectionnées
         if not equipe_ids:
             messages.error(request, "Veuillez sélectionner au moins une équipe à mobiliser.")
-            return redirect(request.path)
+            return render(request, 'organiser_mobilisation.html', {
+                'projet': projet,
+                'equipes_pre_affectees': equipes_pre_affectees,
+                'activite_form': activite_form,
+                'mobilisation_form': mobilisation_form,
+                'livrable_formset': livrable_formset,
+            })
 
-        if date_fin < date_debut:
-            messages.error(request, "La date de fin ne peut pas précéder la date de début.")
-            return redirect(request.path)
+        if activite_form.is_valid() and mobilisation_form.is_valid() and livrable_formset.is_valid():
+            try:
+                with transaction.atomic():
+                    # 1. Enregistrer l'activité
+                    activite = activite_form.save(commit=False)
+                    activite.projet = projet
+                    activite.statut = "Planifiée" # Assurez-vous que le statut est géré ici ou par défaut dans le modèle
+                    activite.save()
 
-        activite = Activite.objects.create(
-            projet=projet,
-            nom=nom_activite,
-            description=description,
-            statut="Planifiée",
-            date_debut=date_debut,
-            date_fin=date_fin,
-           
-        )
+                    # 2. Enregistrer la mobilisation
+                    mobilisation = mobilisation_form.save(commit=False)
+                    mobilisation.activite = activite
+                    # Assurez-vous que request.user.chefprojet existe et est correctement lié
+                    # Si c'est un OneToOneField depuis User, ça devrait être bon.
+                    # Sinon, vous devrez peut-être le récupérer différemment.
+                    try:
+                        mobilisation.chef_projet = request.user.chefprojet
+                    except ChefProjet.DoesNotExist:
+                        messages.error(request, "L'utilisateur connecté n'est pas associé à un Chef de Projet.")
+                        raise # Renvoyer l'erreur pour annuler la transaction
 
-        mobilisation = Mobilisation.objects.create(
-            activite=activite,
-            chef_projet=request.user.chefprojet,
-            date_debut=date_debut,
-            date_fin=date_fin,
-            site=site
-            
-        )
+                    # Les dates de mobilisation peuvent être les mêmes que l'activité ou spécifiques
+                    # Si elles sont les mêmes que l'activité :
+                    mobilisation.date_debut = activite.date_debut
+                    mobilisation.date_fin = activite.date_fin
+                    # Si elles sont distinctes, utilisez les valeurs du formulaire de mobilisation
 
-        print("Equipe sélectionnées :", equipe_ids)
-        print("Dates :", date_debut, "->", date_fin)
-        print("Projet :", projet)
+                    mobilisation.save()
 
+                    # 3. Enregistrer les liaisons Activité-Équipe (Realiser)
+                    for equipe_id in equipe_ids:
+                        equipe = get_object_or_404(Equipe, id=equipe_id)
+                        Realiser.objects.create(
+                            equipe=equipe,
+                            activite=activite
+                             
+                        )
 
-        for equipe_id in equipe_ids:
-            Realiser.objects.create(
-                equipe_id=equipe_id,
-                activite=activite,
-                date=date_debut
-            )
+                    # 4. Enregistrer les livrables
+                    for form in livrable_formset:
+                        if form.has_changed() and not form.cleaned_data.get('DELETE', False):
+                            livrable = form.save(commit=False)
+                            livrable.activite = activite
+                            livrable.save()
 
-        messages.success(request, "Mobilisation enregistrée avec succès.")
-        return redirect('resume_mobilisation')#activite.id)
-  
+                    messages.success(request, "Mobilisation enregistrée avec succès.")
+                    return redirect('resume_mobilisation') # Assurez-vous que cette URL existe
+
+            except Exception as e:
+                messages.error(request, f"Une erreur est survenue lors de l'enregistrement de la mobilisation : {e}")
+                # Re-rendre le formulaire avec les données POST pour permettre correction
+        else:
+            # Si les formulaires ne sont pas valides, les messages d'erreur de validation seront affichés par le template.
+            messages.error(request, "Veuillez corriger les erreurs dans le formulaire.")
+
+    else:
+        # Initialisation des formulaires pour une requête GET
+        activite_form = ActiviteForm()
+        mobilisation_form = MobilisationForm()
+        livrable_formset = LivrableFormSet(prefix='livrable')
 
     return render(request, 'organiser_mobilisation.html', {
         'projet': projet,
-        'equipes_pre_affectees': equipes_affectees,
-        
+        'equipes_pre_affectees': equipes_pre_affectees,
+        'activite_form': activite_form,
+        'mobilisation_form': mobilisation_form,
+        'livrable_formset': livrable_formset,
     })
+
 
 
 
@@ -755,15 +767,45 @@ def resume_mobilisation(request, mobilisation_id):
 
 
 
+
+from django.db.models import Prefetch
 def liste_mobilisations(request):
-    mobilisations = Mobilisation.objects.select_related('activite', 'chef_projet').all().order_by('-date_debut')
-    # Précharger les équipes via Realiser et Activite si besoin
-    # Par exemple, pour chaque mobilisation, récupérer les équipes de l'activité
+    #mobilisations = Mobilisation.objects.select_related('activite', 'chef_projet').all().order_by('-date_debut')
+    mobilisations = Mobilisation.objects.select_related('activite', 'chef_projet').prefetch_related(Prefetch('activite__equipes_realisation', queryset=Realiser.objects.select_related('equipe'), to_attr='prefetched_equipes_realisation'  )  ).order_by('-date_debut')# Précharger les équipes via Realiser et Activite si besoin
+   
 
     context = {
         'mobilisations': mobilisations,
     }
     return render(request, 'liste_mobilisations.html', context)
+
+
+
+def liste_activites(request):
+    activites = Activite.objects.select_related('projet').prefetch_related('equipes_realisation', 'livrables').order_by('created_at')
+    return render(request, 'activites.html', {
+        'activites': activites,
+        'statut_choices': STATUT_ACTIVITIES_CHOICES,
+    })
+
+
+
+def changer_statut_activite(request, activite_id):
+    activite = get_object_or_404(Activite, id=activite_id)
+    nouveau_statut = request.POST.get('statut')
+
+    if nouveau_statut in dict(STATUT_ACTIVITIES_CHOICES):
+        activite.statut = nouveau_statut
+        activite.save()
+        return JsonResponse({'success': True, 'message': 'Statut mis à jour.'})
+    return JsonResponse({'success': False, 'message': 'Statut non valide.'}, status=400)
+
+
+
+
+
+
+
 
 
 
