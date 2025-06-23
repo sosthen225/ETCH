@@ -37,13 +37,14 @@
         <td>{{ projet.chef_projet.user.get_full_name }}</td>
         <td>{{ projet.client.nom }}</td>
         <td>
+          <a href="{% url 'ajouter_taches' projet.id %}" class="btn btn-info btn-sm mt-1">Ajouter des tâches</a>
+        
           <a href="{% url 'modifier_projet' projet.id %}" class="btn btn-warning btn-sm">Modifier</a>
           <form action="{% url 'supprimer_projet' projet.id %}" method="post" style="display:inline;">
   {% csrf_token %}
   <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Confirmer la suppression ?')">Supprimer</button>
 </form>
-
-        </td>
+  
       </tr>
       {% endfor %}
     </tbody>

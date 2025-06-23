@@ -1,6 +1,6 @@
 from django.urls import include, path, reverse_lazy
 from ETCH import settings
-from Geequipe.views import affecter_equipe, ajouter_projet, changer_statut_activite, changer_statut_personnel, creer_equipe, creer_mobilisation, enregistrer_agent, equipes_disponibles,  index, liste_activites, liste_equipes, liste_mobilisations, login_page, logout_view, mobiliser_equipes, modifier_agent, modifier_equipe, modifier_projet, organiser_mobilisation, projets_disponibles, resume_mobilisation, search_results, supprimer_affectation, supprimer_agent, supprimer_equipe, supprimer_projet, tabpersonels, tabprojet, voir_certificats
+from Geequipe.views import affecter_equipe, ajouter_projet, ajouter_taches, changer_statut_activite, changer_statut_personnel, creer_equipe, creer_mobilisation, enregistrer_agent, equipes_disponibles,  index, liste_activites, liste_equipes, liste_mobilisations, login_page, logout_view, mobiliser_equipes, modifier_agent, modifier_equipe, modifier_projet, organiser_mobilisation, projets_disponibles, resume_mobilisation, search_results, supprimer_affectation, supprimer_agent, supprimer_equipe, supprimer_projet, tabpersonels, tabprojet, voir_certificats
 from django.contrib.auth import views as auth_views
 from django.conf.urls.static import static
 
@@ -16,6 +16,8 @@ urlpatterns = [
     path('ajouter_projet/', ajouter_projet, name='ajouter_projet'),
     path('modifier_projet/<int:id>/', modifier_projet, name='modifier_projet'),
     path('supprimer_projet/<int:id>/', supprimer_projet, name='supprimer_projet'),
+    path('projets/<int:projet_id>/',ajouter_taches, name='ajouter_taches'),
+
    
 
     #path('projets/<int:projet_id>/json/', projet_json, name='projet_json'),

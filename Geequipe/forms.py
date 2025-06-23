@@ -38,7 +38,7 @@ class ProjetForm(forms.ModelForm):
 
 
 
-from django.forms import ValidationError, modelformset_factory, BaseModelFormSet
+from django.forms import ValidationError, inlineformset_factory, modelformset_factory, BaseModelFormSet
 from .models import Equipe, Membre, Personnel
 
 class EquipeForm(forms.ModelForm):
@@ -265,10 +265,15 @@ class ModifierPersonnelForm(forms.ModelForm):
         ]
         widgets = {
             'statut': forms.Select(choices=[
-                ('en_cours', 'En cours'),
-                ('termine', 'Terminé'),
-                ('en_attente', 'En attente'),
-                ('suspendu', 'Suspendu')
+                 ('DISPONIBLE', 'Disponible'),
+                 ('ACTIF', 'Actif'),
+                 ('CONGE', 'En congé'),
+                ('SUSPENDU', 'Suspendu'),
+                ('MISSION', 'En mission'),
+                ('permission', 'Permission'),
+                 ('retraite', 'Retraite'),
+                ('licencie', 'Licencié'),
+                 ('depart', 'Départ'),  
             ]),
         }
 
@@ -422,22 +427,30 @@ class AffectationProjetForm(forms.ModelForm):
 
 
 class ActiviteForm(forms.ModelForm):
+    # class Meta:
+    #     model = Activite
+    #     fields = ['nom', 'description', 'date_debut', 'date_fin']
+    #     widgets = {
+    #         'date_debut': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+    #         'date_fin': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+    #         'nom': forms.TextInput(attrs={'class': 'form-control'}),
+    #         'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+    #     }
+    #     labels = {
+    #         'nom': 'Nom de l\'activité',
+    #         'description': 'Description',
+    #         'date_debut': 'Date de début',
+    #         'date_fin': 'Date de fin',
+    #     }
+
     class Meta:
         model = Activite
-        fields = ['nom', 'description', 'date_debut', 'date_fin']
+        exclude = ['statut']  # Ne pas afficher
         widgets = {
-            'date_debut': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'date_fin': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'nom': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+            'date_debut': forms.DateInput(attrs={'type': 'date'}),
+            'date_fin': forms.DateInput(attrs={'type': 'date'}),
         }
-        labels = {
-            'nom': 'Nom de l\'activité',
-            'description': 'Description',
-            'date_debut': 'Date de début',
-            'date_fin': 'Date de fin',
-        }
-
+   
     def clean(self):
         cleaned_data = super().clean()
         date_debut = cleaned_data.get('date_debut')
@@ -446,6 +459,20 @@ class ActiviteForm(forms.ModelForm):
         if date_debut and date_fin and date_fin < date_debut:
             raise ValidationError("La date de fin ne peut pas précéder la date de début.")
         return cleaned_data
+    
+    
+class LivrableForm(forms.ModelForm):
+    class Meta:
+        model = Livrable
+        fields = ['nom_livrable']
+        
+        
+LivrableFormSet = inlineformset_factory(
+    Activite, Livrable, form=LivrableForm,
+    extra=1, can_delete=True
+)
+
+
 
 class MobilisationForm(forms.ModelForm):
     class Meta:
@@ -489,13 +516,13 @@ class RealiserForm(forms.ModelForm):
             self.fields['equipe'].queryset = Equipe.objects.filter(id__in=equipes_choices)
             # Ou simplement : self.fields['equipe'].queryset = equipes_choices
 
-class LivrableForm(forms.ModelForm):
-    class Meta:
-        model = Livrable
-        fields = ['nom_livrable']
-        widgets = {
-            'nom_livrable': forms.TextInput(attrs={'class': 'form-control'}),
-        }
-        labels = {
-            'nom_livrable': 'Nom du livrable',
-        }
+# # class LivrableForm(forms.ModelForm):
+#     class Meta:
+#         model = Livrable
+#         fields = ['nom_livrable']
+#         widgets = {
+#             'nom_livrable': forms.TextInput(attrs={'class': 'form-control'}),
+#         }
+#         labels = {
+#             'nom_livrable': 'Nom du livrable',
+#         }

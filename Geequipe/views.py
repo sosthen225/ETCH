@@ -1,5 +1,5 @@
 from urllib import request
-from django.forms import ValidationError, formset_factory
+from django.forms import ValidationError, formset_factory, inlineformset_factory, modelformset_factory
 from django.shortcuts import get_object_or_404, render
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
@@ -22,7 +22,7 @@ from Geequipe.models import ChefProjet, Projet, Client
 import json
 from datetime import datetime
 from django.http import JsonResponse
-from .models import COMPETENCE_CHOICES, PAYS_CHOICES, STATUT_ACTIVITIES_CHOICES, STATUT_PERSONNEL_CHOICES, Activite, AffectationProjet, Certificat, Competence, Equipe, Expatriation, Membre, Mobilisation, PaysAffectation, Personnel, Projet, Client, Posseder, Realiser
+from .models import COMPETENCE_CHOICES, PAYS_CHOICES, STATUT_ACTIVITIES_CHOICES, STATUT_PERSONNEL_CHOICES, Activite, AffectationProjet, Certificat, Competence, Equipe, Expatriation, Livrable, Membre, Mobilisation, PaysAffectation, Personnel, Projet, Client, Posseder, Realiser
 from django.contrib.auth import get_user_model
 User = get_user_model()
 import json
@@ -604,11 +604,39 @@ def supprimer_affectation(request, affectation_id):
 
 
 
-# def liste_affectations(request):
-#     affectations = AffectationProjet.objects.select_related('projet', 'equipe')
-#     return render(request, 'liste_affectations.html', {'affectations': affectations})
 
+def ajouter_taches(request, projet_id):
+    ProjetFormSet = formset_factory(ActiviteForm, extra=1)
+    LivrableFormSet = inlineformset_factory(Activite, Livrable, form=LivrableForm, extra=1)
 
+    projet = get_object_or_404(Projet, id=projet_id)
+    empty_livrable_formset = LivrableFormSet()
+
+    if request.method == "POST":
+        formset = ProjetFormSet(request.POST, prefix="taches")
+        if formset.is_valid():
+            for i, form in enumerate(formset):
+                if form.has_changed():
+                    tache = form.save(commit=False)
+                    tache.projet = projet
+                    tache.save()
+
+                    livrable_formset = LivrableFormSet(
+                        request.POST,
+                        instance=tache,
+                        prefix=f"livrables-{i}"
+                    )
+                    if livrable_formset.is_valid():
+                        livrable_formset.save()
+            return redirect('tabprojet')
+    else:
+        formset = ProjetFormSet(prefix="taches")
+
+    return render(request, 'ajouter_taches.html', {
+        'formset': formset,
+        'projet': projet,
+        'empty_livrable_formset': empty_livrable_formset,
+    })
 
 def mobiliser_equipes(request, projet_id):
     projet = get_object_or_404(Projet, id=projet_id)

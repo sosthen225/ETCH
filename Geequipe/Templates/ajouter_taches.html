@@ -1,0 +1,165 @@
+{% extends 'index.html' %}
+{% block content %}
+
+<div class="container mt-5">
+  <h3 class="text-center mb-4">Ajouter des tâches au projet : {{ projet.nom }}</h3>
+
+  <form method="post">
+    {% csrf_token %}
+    {{ formset.management_form }}
+
+    <div id="formset-container">
+      {% for form in formset %}
+        <div class="card mb-4 p-3 border border-primary rounded task-form">
+          <h5 class="mb-3">Tâche {{ forloop.counter }}</h5>
+          <div class="row">
+            <div class="col-md-6 mb-3">{{ form.nom.label_tag }} {{ form.nom }}</div>
+            <div class="col-md-6 mb-3">{{ form.description.label_tag }} {{ form.description }}</div>
+            <div class="col-md-6 mb-3">{{ form.date_debut.label_tag }} {{ form.date_debut }}</div>
+            <div class="col-md-6 mb-3">{{ form.date_fin.label_tag }} {{ form.date_fin }}</div>
+            <div class="col-md-6 mb-3">{{ form.tache_precedente.label_tag }} {{ form.tache_precedente }}</div>
+
+            <!-- Bloc livrables -->
+            <div class="col-md-12">
+              <h6>Livrables</h6>
+              <div class="livrables-container" data-formset-prefix="livrables-{{ forloop.counter0 }}">
+                {{ empty_livrable_formset.management_form }}
+
+                <div class="livrable-list">
+                  {% for livrable_form in empty_livrable_formset %}
+                    <div class="livrable-form-group row mb-2">
+                      <div class="col-md-5">{{ livrable_form.nom }}</div>
+                      <div class="col-md-5">{{ livrable_form.description }}</div>
+                      <div class="col-md-2">
+                        <button type="button" class="btn btn-danger btn-sm remove-livrable">Supprimer</button>
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
+
+                <button type="button" class="btn btn-info btn-sm add-livrable mt-2">+ Ajouter un livrable</button>
+              </div>
+            </div>
+            <!-- Fin bloc livrables -->
+
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="text-center mb-3">
+      <button type="submit" class="btn btn-success">Enregistrer</button>
+      <a href="{% url 'tabprojet' %}" class="btn btn-secondary">Retour aux projets</a>
+    </div>
+  </form>
+</div>
+
+<div class="text-center mb-4">
+  <button type="button" class="btn btn-primary" id="addFormBtn">➕ Ajouter une tâche</button>
+</div>
+
+{% endblock %}
+
+<!-- Script JS pour ajout dynamique -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const container = document.getElementById("formset-container");
+    const addTaskBtn = document.getElementById("addFormBtn");
+    const totalFormsInput = document.querySelector("[name='taches-TOTAL_FORMS']");
+
+    // Template HTML d'un livrable vide
+    const emptyLivrableHTML = `
+        <div class="livrable-form-group row mb-2">
+            <div class="col-md-5">{{ empty_livrable_form.0.nom }}</div>
+            <div class="col-md-5">{{ empty_livrable_form.0.description }}</div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-danger btn-sm remove-livrable">Supprimer</button>
+            </div>
+        </div>
+    `;
+
+    // Fonction pour attacher les événements aux boutons
+    function setupEventListeners() {
+        document.querySelectorAll(".add-livrable").forEach(btn => {
+            btn.removeEventListener("click", handleAddLivrable);
+            btn.addEventListener("click", handleAddLivrable);
+        });
+
+        document.querySelectorAll(".remove-livrable").forEach(btn => {
+            btn.addEventListener("click", function () {
+                this.closest(".livrable-form-group").remove();
+                updateTotalLivrables(this);
+            });
+        });
+    }
+
+    // Gestionnaire d'ajout de livrable
+    function handleAddLivrable(e) {
+        const container = e.target.closest(".livrables-container");
+        const list = container.querySelector(".livrable-list");
+
+        let html = emptyLivrableHTML
+            .replace(/livrables-\d+/g, container.dataset.formsetPrefix);
+
+        const temp = document.createElement("div");
+        temp.innerHTML = html;
+        const newLivrable = temp.firstElementChild;
+
+        list.appendChild(newLivrable);
+        updateTotalLivrables(newLivrable);
+
+        // Réattacher les événements
+        setupEventListeners();
+    }
+
+    // Mettre à jour TOTAL_FORMS pour les livrables
+    function updateTotalLivrables(el) {
+        const container = el.closest(".livrables-container");
+        const count = container.querySelectorAll(".livrable-form-group").length;
+        const totalInput = container.querySelector("[name$='-TOTAL_FORMS']");
+        if (totalInput) totalInput.value = count;
+    }
+
+    // Gestion ajout dynamique de tâche
+    addTaskBtn.addEventListener("click", function () {
+        const currentCount = parseInt(totalFormsInput.value);
+        const firstCard = container.querySelector(".task-form");
+        const newCard = firstCard.cloneNode(true);
+
+        // Réinitialiser les champs texte
+        newCard.querySelectorAll("input[type='text'], input[type='date']").forEach(input => input.value = "");
+        newCard.querySelectorAll("textarea").forEach(ta => ta.value = "");
+        newCard.querySelectorAll("select").forEach(sel => sel.selectedIndex = 0);
+
+        // Modifier les noms des champs en fonction du nouveau index
+        newCard.querySelectorAll("input, textarea, select").forEach(input => {
+            input.name = input.name.replace(/\d+/, currentCount);
+            input.id = input.id.replace(/\d+/, currentCount);
+        });
+
+        // Modifier les prefixes des livrables
+        const livrablesContainer = newCard.querySelector(".livrables-container");
+        livrablesContainer.dataset.formsetPrefix = "livrables-" + currentCount;
+        livrablesContainer.querySelectorAll(".livrable-form-group").forEach((group, idx) => {
+            group.querySelectorAll("input, textarea, select").forEach(input => {
+                input.name = input.name.replace(/livrables-\d+/, "livrables-" + currentCount);
+                input.id = input.id.replace(/livrables-\d+/, "livrables-" + currentCount);
+            });
+        });
+
+        // Reset management form
+        const totalLivrablesInput = livrablesContainer.querySelector("[name$='-TOTAL_FORMS']");
+        if (totalLivrablesInput) totalLivrablesInput.value = 1;
+
+        // Ajouter la nouvelle tâche
+        container.appendChild(newCard);
+        totalFormsInput.value = currentCount + 1;
+
+        // Attacher les événements
+        setupEventListeners();
+    });
+
+    // Initialisation des événements
+    setupEventListeners();
+});
+</script>
