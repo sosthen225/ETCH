@@ -98,7 +98,7 @@ def index(request):
     projet_encours= Projet.objects.filter(statut='en_cours').order_by('-date_fin')[:10]
     completed_projects_list = Projet.objects.filter(statut='terminé').order_by('-date_fin')[:10] # Obtenir les 10 derniers projets terminés
 
-    # Pour les notifications : Projets se terminant bientôt (par exemple, dans les 14jours)
+    # Pour les notifications : Projets se terminant bientôt (par exemple, dans les 2 semaines)
     today = date.today()
     one_month_from_now = today + timedelta(days=14)
     upcoming_projects = Projet.objects.filter(
@@ -109,7 +109,7 @@ def index(request):
     
     #all_mobilisations = Mobilisation.objects.all().order_by('-date_debut')
     #planned_mobilisations = Mobilisation.objects.filter(statut__in=['planifié'] ).order_by('date_debut')
-    planned_activities =Activite.objects.filter(statut='planifiée' ,projet__statut='en_cours').order_by('date_debut')
+    planned_activities =Activite.objects.filter(statut='planifiée' ,projet__statut='en_cours').order_by('-date_debut')
 
 
     # # Pour les notifications : Certifications du personnel expirant bientôt (par exemple, dans les 30 jours)
