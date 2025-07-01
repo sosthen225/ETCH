@@ -375,7 +375,7 @@
                       </div>
                       <div class="col col-stats ms-3 ms-sm-0">
                         <div class="numbers">
-                          <p class="card-category">Total Personnel</p>
+                          <p class="card-category">Total Agent</p>
                           <h4 class="card-title">{{ total_personnel }}</h4>
                         </div>
                       </div>
@@ -394,7 +394,7 @@
         <div class="card card-round">
             <div class="card-header">
                 <div class="card-head-row card-tools-still-right">
-                    <div class="card-title">Activités/Mobilisations Prévues et Organisées</div>
+                    <div class="card-title">Taches Prévues et Organisées</div>
                 </div>
             </div>
             <div class="card-body p-0">
@@ -571,7 +571,7 @@
                             <th scope="col">Nom du projet</th>
                             <th scope="col">Date de fin</th>
                             <th scope="col">Client</th>
-                            <th scope="col">Client</th>
+                            <th scope="col">Equipes</th>
                             <th scope="col" class="text-center">Statut</th>
                           </tr>
                         </thead>
@@ -581,7 +581,7 @@
                             <th scope="row">{{ projet.nom }}</th>
                             <td class="text-end">{{ projet.date_fin|date:"d/m/Y" }}</td>
                             <td>{{ projet.client }}</td>
-                            <td>{{ projet.equipe }}</td>
+                            <td>{{ projet.equipes }}</td>
                             <td class="text-center">
                               <span class="badge badge-success">terminé</span>
                             </td>

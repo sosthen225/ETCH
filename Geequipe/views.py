@@ -1,10 +1,11 @@
+from functools import partial
 from urllib import request
-from django.forms import ValidationError, formset_factory
+from django.forms import ValidationError, formset_factory, inlineformset_factory, modelformset_factory
 from django.shortcuts import get_object_or_404, render
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login
 from django.contrib import messages
-from Geequipe.forms import ActiviteForm, AffectationProjetForm, EquipeForm, LivrableForm, MembreFormSet, MobilisationForm, ModifierPersonnelForm, ProjetForm
+from Geequipe.forms import ActiviteForm, AffectationProjetForm, EquipeForm, LivrableForm, LivrableInlineFormSet, MembreFormSet, MobilisationForm, ModifierPersonnelForm, ProjetForm
 from Geequipe.models import ChefProjet, Projet , Client
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -22,7 +23,7 @@ from Geequipe.models import ChefProjet, Projet, Client
 import json
 from datetime import datetime
 from django.http import JsonResponse
-from .models import COMPETENCE_CHOICES, PAYS_CHOICES, STATUT_ACTIVITIES_CHOICES, STATUT_PERSONNEL_CHOICES, Activite, AffectationProjet, Certificat, Competence, Equipe, Expatriation, Membre, Mobilisation, PaysAffectation, Personnel, Projet, Client, Posseder, Realiser
+from .models import COMPETENCE_CHOICES, PAYS_CHOICES, STATUT_ACTIVITIES_CHOICES, STATUT_PERSONNEL_CHOICES, Activite, AffectationProjet, Certificat, Competence, Equipe, Expatriation, Livrable, Membre, Mobilisation, PaysAffectation, Personnel, Projet, Client, Posseder, Realiser
 from django.contrib.auth import get_user_model
 User = get_user_model()
 import json
@@ -160,7 +161,17 @@ def tabprojet(requests):
        
     })
 
-
+def modifier_statut_projet(request, projet_id):
+    if request.method == 'POST':
+        nouveau_statut = request.POST.get('statut')
+        try:
+            projet = Projet.objects.get(id=projet_id)
+            projet.statut = nouveau_statut
+            projet.save()
+            return JsonResponse({'success': True})
+        except Projet.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Projet introuvable'})
+    return JsonResponse({'success': False, 'message': 'Méthode non autorisée'})
 
 
 def changer_statut_personnel(request, agent_id):
@@ -437,14 +448,17 @@ def supprimer_agent(request, agent_id):
 
 
 def creer_equipe(request):
-    competence = request.GET.get('competence')  # facultatif : ?competence=RAN par ex.
+    competence = request.GET.get('competence')  # ?competence=RAN par ex.
 
     if request.method == 'POST':
         equipe_form = EquipeForm(request.POST)
-        formset = MembreFormSet(request.POST, queryset=Membre.objects.none())
+        formset = MembreFormSet(
+            request.POST,
+            queryset=Membre.objects.none(),
+            form_kwargs={'competence': competence}  
+        )
 
         if equipe_form.is_valid() and formset.is_valid():
-            # Liste des membres valides (personnel + role)
             membres_valides = []
             for form in formset:
                 if form.cleaned_data.get('personnel') and form.cleaned_data.get('role'):
@@ -459,7 +473,6 @@ def creer_equipe(request):
                 messages.warning(request, "Un même membre ne peut pas apparaître plusieurs fois.")
             else:
                 signature_nouvelle = set(membres_valides)
-
                 for equipe in Equipe.objects.all():
                     signature_existante = set(
                         (m.personnel.id, m.role)
@@ -478,15 +491,20 @@ def creer_equipe(request):
                             membre.save()
                     messages.success(request, "Équipe créée avec succès.")
                     return redirect('liste_equipes')
+
     else:
         equipe_form = EquipeForm()
-        formset = MembreFormSet(queryset=Membre.objects.none(), form_kwargs={'competence': competence})
+        formset = MembreFormSet(
+            queryset=Membre.objects.none(),
+            form_kwargs={'competence': competence}  
+        )
 
     return render(request, 'equipes.html', {
         'equipe_form': equipe_form,
         'formset': formset,
         'competence': competence,
     })
+
 
 
 
@@ -602,11 +620,202 @@ def supprimer_affectation(request, affectation_id):
 
 
 
+from datetime import date
+from django.shortcuts import render, get_object_or_404, redirect
+from .models import Projet, Equipe, Membre, Effectuer, Activite
+from .forms import AffecterMembreTacheForm
+
+def affecter_membres_tache(request, projet_id, equipe_id):
+    projet = get_object_or_404(Projet, id=projet_id)
+    equipe = get_object_or_404(Equipe, id=equipe_id)
+
+    membres_de_l_equipe = Membre.objects.filter(equipe=equipe)
+
+    if request.method == 'POST':
+        form = AffecterMembreTacheForm(request.POST, projet=projet)
+        if form.is_valid():
+            activite = form.cleaned_data['activite']
+            membres = form.cleaned_data['membres']
+
+            for membre in membres:
+                Effectuer.objects.update_or_create(
+                    membre=membre,
+                    activite=activite,
+                    defaults={'date_affecter': date.today()}  # ✅ Date automatique
+                )
+            return redirect('affecter_membres_tache', projet_id=projet.id, equipe_id=equipe.id)
+    else:
+        form = AffecterMembreTacheForm(projet=projet)
+
+    affectations = Effectuer.objects.filter(activite__projet=projet).select_related('membre', 'activite')
+
+    return render(request, 'affectation_tache.html', {
+        'form': form,
+        'projet': projet,
+        'equipe': equipe,
+        'affectations': affectations,
+        'membres_de_l_equipe': membres_de_l_equipe
+    })
 
 
-# def liste_affectations(request):
-#     affectations = AffectationProjet.objects.select_related('projet', 'equipe')
-#     return render(request, 'liste_affectations.html', {'affectations': affectations})
+
+# def allouer_taches(request, projet_id, equipe_id):
+#     projet = get_object_or_404(Projet, id=projet_id)
+#     equipe = get_object_or_404(Equipe, id=equipe_id)
+
+#     # Récupérer toutes les tâches associées à ce projet
+#     taches_du_projet = Activite.objects.filter(projet=projet)
+
+#     # Récupérer les membres de l'équipe
+#     membres_equipe = Membre.objects.filter(equipe=equipe)
+
+#     if not membres_equipe:
+#         messages.warning(request, f"L'équipe '{equipe.nom}' n'a aucun membre pour allouer les tâches.")
+#         return redirect('nom_de_votre_page_affectation') # Redirigez vers la page d'où vous venez
+
+#     if not taches_du_projet:
+#         messages.info(request, f"Le projet '{projet.nom}' n'a pas de tâches non allouées.")
+#         return redirect('nom_de_votre_page_affectation')
+
+#     # Logique d'allocation des tâches
+#     # C'est la partie la plus importante et elle dépendra de vos besoins :
+#     # - Répartition égale ?
+#     # - En fonction des compétences des membres ?
+#     # - Manuelle par une interface ?
+
+#     # Exemple simple : Répartir les tâches une par une aux membres de l'équipe
+#     # Vous devrez adapter cette logique pour la rendre plus intelligente
+#     index_membre = 0
+#     taches_allouees_count = 0
+#     for tache in taches_du_projet:
+#         if membres_equipe: # S'assurer qu'il y a des membres à qui allouer
+#             membre_a_allouer = membres_equipe[index_membre]
+#             tache.assigne_a = membre_a_allouer # Supposons un champ ForeignKey 'assigne_a' dans votre modèle Tache
+#             tache.est_allouee = True # Marquez la tâche comme allouée
+#             tache.save()
+#             taches_allouees_count += 1
+#             index_membre = (index_membre + 1) % len(membres_equipe) # Passer au membre suivant, ou revenir au début
+
+#     if taches_allouees_count > 0:
+#         messages.success(request, f"{taches_allouees_count} tâches du projet '{projet.nom}' ont été allouées aux membres de l'équipe '{equipe.nom}'.")
+#     else:
+#         messages.info(request, f"Aucune nouvelle tâche n'a été allouée pour le projet '{projet.nom}' et l'équipe '{equipe.nom}'.")
+
+#     return redirect('nom_de_votre_page_affectation') # Assurez-vous de remplacer par le nom de l'URL de votre page actuelle
+
+
+
+from django.shortcuts import render, get_object_or_404, redirect
+from .models import Projet, Activite
+from .forms import ActiviteForm, LivrableInlineFormSet
+from django.forms import formset_factory
+
+def ajouter_taches(request, projet_id):
+    projet = get_object_or_404(Projet, id=projet_id)
+
+    class BoundActiviteForm(ActiviteForm):
+        def __init__(self, *args, **kwargs):
+            kwargs.setdefault('projet', projet)
+            super().__init__(*args, **kwargs)
+
+    TacheFormSet = formset_factory(BoundActiviteForm, extra=1, can_delete=True)
+
+    if request.method == "POST":
+        formset = TacheFormSet(request.POST, prefix="taches")
+
+        if formset.is_valid():
+            for i, form in enumerate(formset):
+                if form.cleaned_data.get("DELETE"):
+                    continue
+                if form.has_changed():
+                    activite = form.save(commit=False)
+                    
+                    # ✅ On affecte le projet avant de sauvegarder ou d'utiliser activite.projet
+                    activite.projet = projet
+                    activite.statut = "planifiée"
+                    activite.save()  # Maintenant, activite a bien un ID et un projet
+                    
+                    # ✅ Gestion des livrables
+                    livrable_formset = LivrableInlineFormSet(
+                        request.POST,
+                        instance=activite,
+                        prefix=f"livrables-{i}"
+                    )
+
+                    if livrable_formset.is_valid():
+                        livrable_formset.save()
+                    else:
+                        print("Erreur dans les livrables :", livrable_formset.errors)
+
+            return redirect("tabprojet")
+    else:
+        formset = TacheFormSet(prefix="taches")
+
+    context = {
+        "projet": projet,
+        "formset": formset,
+    }
+    return render(request, "ajouter_taches.html", context)
+
+
+import openpyxl
+from django.http import HttpResponse
+from .models import Projet, Activite, Livrable
+
+
+def exporter_projet_excel(request, projet_id):
+    projet = Projet.objects.get(id=projet_id)
+
+    # Créer un classeur Excel
+    workbook = openpyxl.Workbook()
+
+    # Feuille principale du projet
+    sheet = workbook.active
+    sheet.title = "Projet"
+    sheet.append([
+        "Nom du projet", "Date de début", "Date de fin", "Statut"
+    ])
+    sheet.append([
+        projet.nom,
+        str(projet.date_debut),
+        str(projet.date_fin),
+        projet.statut
+    ])
+
+    # Ajouter les tâches dans une autre feuille
+    sheet_taches = workbook.create_sheet("Tâches")
+    sheet_taches.append([
+        "ID Tâche", "Nom", "Description", "Date Début", "Date Fin", "Statut", "Tâche Précédente"
+    ])
+
+    for activite in Activite.objects.filter(projet=projet):
+        sheet_taches.append([
+            activite.id,
+            activite.nom,
+            activite.description,
+            str(activite.date_debut),
+            str(activite.date_fin),
+            activite.statut,
+            activite.tache_precedente.nom if activite.tache_precedente else ""
+        ])
+
+        # Ajouter les livrables liés à la tâche dans leur propre feuille
+        sheet_livrables = workbook.create_sheet(f"Liv.{activite.id}")
+        sheet_livrables.append(["ID Livrable", "Nom"])
+
+        for livrable in Livrable.objects.filter(activite=activite):
+            sheet_livrables.append([
+                livrable.id,
+                livrable.nom_livrable,
+              
+            ])
+
+    # Réponse HTTP avec le fichier Excel
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = f'attachment; filename=Projet_{projet.nom}.xlsx'
+
+    workbook.save(response)
+    return response
 
 
 

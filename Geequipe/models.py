@@ -47,15 +47,20 @@ STATUT_PERSONNEL_CHOICES = [
     ('ACTIF', 'Actif'),
     ('CONGE', 'En congé'),
     ('SUSPENDU', 'Suspendu'),
-    ('MISSION', 'En mission')
-]
+    ('MISSION', 'En mission'),
+    ('permission', 'Permission'),
+    ('retraite', 'Retraite'),
+    ('licencie', 'Licencié'),
+    ('depart', 'Départ')   ]
+
 
 
 STATUT_ACTIVITIES_CHOICES = [
     ('en cours', 'En cours'),
     ('terminée', 'Terminée'),
     ('planifiée' , 'planifiée'),
-    ('suspendue','Suspendue') ]
+    ('suspendue','Suspendue'),
+    ('bloqueé', 'Bloquée')]
 
 
 # ----------- MODELES -----------
@@ -74,7 +79,7 @@ class Personnel(models.Model):
     email = models.EmailField(unique=True)
     telephone = models.CharField(max_length=10,unique=True)
     nationalite = models.CharField(max_length=50)
-    statut = models.CharField (max_length=50, choices= STATUT_PERSONNEL_CHOICES ,default='actif')
+    statut = models.CharField (max_length=50, choices= STATUT_PERSONNEL_CHOICES ,default='Actif')
     residence = models.CharField(max_length=100)
     competences = models.ManyToManyField('Competence', through='Posseder', related_name='personnel')
 
@@ -179,23 +184,42 @@ class Activite(models.Model):
     temps_passe = models.DurationField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # CHAMP AJOUTÉ POUR LE DIAGRAMME DE GANTT
+    tache_precedente = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='taches_suivantes')
 
     def clean(self):
-     if self.date_fin < self.date_debut:
-        raise ValidationError("La date de fin ne peut pas être antérieure à la date de début.")
+        if self.date_fin < self.date_debut:
+            raise ValidationError("La date de fin ne peut pas être antérieure à la date de début.")
+        # Assurez-vous que l'activité reste dans les limites du projet
+        if self.projet:
+            if self.date_debut < self.projet.date_debut:
+                raise ValidationError("La date de début de l'activité ne peut pas être antérieure à la date de début du projet.")
+            if self.date_fin > self.projet.date_fin:
+                raise ValidationError("La date de fin de l'activité ne peut pas être postérieure à la date de fin du projet.")
 
+
+    @property
+    def est_bloquee(self):
+        """
+        Vérifie si l'activité est bloquée par des prédécesseurs non terminés.
+        """
+        for dep in self.dependances_predecesseur.all():
+            if dep.tache_pred.statut != 'terminée':
+                return True
+        return False
 
     def __str__(self):
         return self.nom
 
 
+
 class Effectuer(models.Model):
-    personnel = models.ForeignKey('Personnel', on_delete=models.CASCADE, related_name='activites_effectuees')
+    membre = models.ForeignKey('Membre', on_delete=models.CASCADE, related_name='activites_effectuees')
     activite = models.ForeignKey('Activite', on_delete=models.CASCADE, related_name='personnels_affectes')
     date_affecter = models.DateField()
 
     def __str__(self):
-        return f"{self.personnel} affecté à {self.activite}"
+        return f"{self.membre} affecté à {self.activite}"
 
 
 class Certificat(models.Model):

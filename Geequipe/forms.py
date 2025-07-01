@@ -38,7 +38,7 @@ class ProjetForm(forms.ModelForm):
 
 
 
-from django.forms import ValidationError, modelformset_factory, BaseModelFormSet
+from django.forms import ValidationError, formset_factory, inlineformset_factory, modelformset_factory, BaseModelFormSet
 from .models import Equipe, Membre, Personnel
 
 class EquipeForm(forms.ModelForm):
@@ -56,10 +56,17 @@ class MembreForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         competence = kwargs.pop('competence', None)
         super().__init__(*args, **kwargs)
+        
+        # Start with all active personnel
+        personnel_queryset = Personnel.objects.filter(statut__iexact='Actif') 
+
         if competence:
-            self.fields['personnel'].queryset = Personnel.objects.filter(
+            # If a competence is provided, further filter by competence
+            personnel_queryset = personnel_queryset.filter(
                 competences_possedees__competence__libelle=competence
             ).distinct()
+        
+        self.fields['personnel'].queryset = personnel_queryset
 
 
 
@@ -132,110 +139,6 @@ MembreFormSet = modelformset_factory(
 )
 
 
-# class MembreForm(forms.ModelForm):
-#     class Meta:
-#         model = Membre
-#         fields = ['personnel', 'role'] 
-
-#     def __init__(self, *args, **kwargs):
-#         # Récupère l'ID du personnel déjà sélectionné (si c'est un formulaire existant)
-#         initial_personnel_id = kwargs.get('instance') and kwargs.get('instance').personnel_id
-
-#         super().__init__(*args, **kwargs)
-
-#         # 1. Pré-filtrage du queryset du personnel au chargement initial du formulaire
-#         # Par défaut, afficher tous les personnels, mais cette logique sera surtout gérée par JS.
-#         self.fields['personnel'].queryset = Personnel.objects.all() 
-        
-#         # 2. Applique les règles du rôle de chauffeur si un personnel est déjà associé
-#         if initial_personnel_id:
-#             personnel_instance = Personnel.objects.get(id=initial_personnel_id)
-#             self._apply_chauffeur_rules_to_role_field(personnel_instance)
-            
-#         # Ajoutez des classes CSS pour faciliter le ciblage par JavaScript
-#         self.fields['personnel'].widget.attrs['class'] = 'select-personnel-membre'
-#         self.fields['role'].widget.attrs['class'] = 'select-role-membre'
-
-#     def _apply_chauffeur_rules_to_role_field(self, personnel_instance):
-#         """
-#         Rend le champ 'role' en lecture seule et le pré-remplit avec 'Chauffeur'
-#         si le personnel a la compétence 'Chauffeur'.
-#         """
-#         try:
-#             chauffeur_competence = Competence.objects.get(libelle="Chauffeur")
-            
-#             if Posseder.objects.filter(personnel=personnel_instance, competence=chauffeur_competence).exists():
-#                 self.fields['role'].initial = 'Chauffeur'
-#                 self.fields['role'].widget.attrs['readonly'] = True
-#                 self.fields['role'].widget.attrs['disabled'] = True # Désactive pour éviter l'envoi de la valeur (JS devra la gérer)
-#                 self.fields['role'].choices = [('Chauffeur', 'Chauffeur')] # N'affiche que "Chauffeur"
-#                 self.fields['role'].widget.attrs['title'] = "Ce rôle est défini automatiquement car le membre est un chauffeur."
-#             else:
-#                 # Si le personnel n'est PAS un chauffeur, assurez-vous que le champ 'role' n'est pas limité
-#                 # au cas où il aurait été rendu 'disabled' ou 'readonly' par erreur
-#                 self.fields['role'].widget.attrs.pop('readonly', None)
-#                 self.fields['role'].widget.attrs.pop('disabled', None)
-#                 # Réinitialisez les choix si vous les aviez limités dynamiquement
-#                 # self.fields['role'].choices = ROLES_CHOICES # (nécessite d'importer ROLES_CHOICES de votre modèle Membre)
-#         except Competence.DoesNotExist:
-#             print("AVERTISSEMENT: La compétence 'Chauffeur' n'a pas été trouvée dans la base de données.")
-#             pass
-
-# # Votre BaseMembreFormSet (la validation forte côté serveur) reste inchangée
-# class BaseMembreFormSet(BaseModelFormSet):
-#     def clean(self):
-#         super().clean() 
-
-#         total_forms = 0
-#         for form in self.forms:
-#             if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
-#                 total_forms += 1
-        
-#         if total_forms < 3 or total_forms > 5:
-#             raise forms.ValidationError("Vous devez sélectionner entre 3 et 5 membres pour l'équipe.")
-
-#         chauffeur_competence = None
-#         try:
-#             chauffeur_competence = Competence.objects.get(libelle="Chauffeur")
-#         except Competence.DoesNotExist:
-#             print("AVERTISSEMENT: La compétence 'Chauffeur' n'a pas été trouvée. La validation de rôle a été ignorée.")
-#             pass
-
-#         for form in self.forms:
-#             if not form.cleaned_data or (self.can_delete and form.cleaned_data.get('DELETE', False)):
-#                 continue 
-
-#             personnel = form.cleaned_data.get('personnel')
-#             role = form.cleaned_data.get('role')
-
-#             if not personnel:
-#                 form.add_error('personnel', "Le membre du personnel doit être sélectionné.")
-#                 continue 
-
-#             is_chauffeur = False
-#             if chauffeur_competence:
-#                 if Posseder.objects.filter(personnel=personnel, competence=chauffeur_competence).exists():
-#                     is_chauffeur = True
-
-#             # -- Logique de validation bidirectionnelle ici --
-#             if is_chauffeur:
-#                 if role != 'Chauffeur':
-#                     form.add_error('role', "Le rôle doit être 'Chauffeur' pour ce membre du personnel.")
-#             else: # Personnel n'est pas chauffeur
-#                 if role == 'Chauffeur':
-#                     form.add_error('role', "Ce membre du personnel ne possède pas la compétence 'Chauffeur' et ne peut pas avoir ce rôle.")
-
-# MembreFormSet = modelformset_factory(
-#     Membre,
-#     form=MembreForm,
-#     formset=BaseMembreFormSet,
-#     extra=5,
-#     max_num=5,
-#     validate_max=True,
-#     can_delete=False,
-# )
-
-
 class ModifierPersonnelForm(forms.ModelForm):
     competence = forms.ChoiceField(
         choices=COMPETENCE_CHOICES,
@@ -265,10 +168,15 @@ class ModifierPersonnelForm(forms.ModelForm):
         ]
         widgets = {
             'statut': forms.Select(choices=[
-                ('en_cours', 'En cours'),
-                ('termine', 'Terminé'),
-                ('en_attente', 'En attente'),
-                ('suspendu', 'Suspendu')
+                 ('DISPONIBLE', 'Disponible'),
+                 ('ACTIF', 'Actif'),
+                 ('CONGE', 'En congé'),
+                ('SUSPENDU', 'Suspendu'),
+                ('MISSION', 'En mission'),
+                ('permission', 'Permission'),
+                 ('retraite', 'Retraite'),
+                ('licencie', 'Licencié'),
+                 ('depart', 'Départ'),  
             ]),
         }
 
@@ -333,54 +241,7 @@ class ModifierPersonnelForm(forms.ModelForm):
 
 
 
-# class AffectationProjetForm(forms.ModelForm):
-#     class Meta:
-#         model = AffectationProjet
-#         fields = ['projet', 'equipe']
-#         widgets = {
-#             'projet': forms.Select(attrs={'class': 'form-select'}),
-#             'equipe': forms.Select(attrs={'class': 'form-select'}),
-#         }
 
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         # Filtre le queryset des projets pour n'afficher que les projets 'en_cours'
-#         self.fields['projet'].queryset = Projet.objects.filter(statut='en_cours')
-
-#     def clean(self):
-#         cleaned_data = super().clean()
-#         equipe = cleaned_data.get('equipe')
-#         projet = cleaned_data.get('projet')
-
-#         if equipe and projet:
-#             # Vérifie si cette équipe spécifique est déjà affectée à ce projet spécifique
-#             if AffectationProjet.objects.filter(equipe=equipe, projet=projet).exists():
-#                 raise ValidationError("Cette équipe est déjà affectée à ce projet.")
-#         return cleaned_data
-
-
-
-# class AffectationProjetForm(forms.ModelForm):
-#     class Meta:
-#         model = AffectationProjet
-#         fields = ['projet', 'equipe']
-#         widgets = {
-#             'projet': forms.Select(attrs={'class': 'form-select', 'id': 'id_projet'}),
-#             'equipe': forms.Select(attrs={'class': 'form-select', 'id': 'id_equipe'}),
-#         }
-
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-
-#         # Projets en cours
-#         projets_en_cours = Projet.objects.filter(statut='en_cours')
-
-#         # Supprimer pour chaque projet les équipes déjà assignées
-#         equipe_assignees = AffectationProjet.objects.values_list('equipe_id', flat=True).distinct()
-#         self.fields['equipe'].queryset = Equipe.objects.exclude(id__in=equipe_assignees)
-
-#         # Tous les projets en cours
-#         self.fields['projet'].queryset = projets_en_cours
 
 class AffectationProjetForm(forms.ModelForm):
     class Meta:
@@ -410,10 +271,27 @@ class AffectationProjetForm(forms.ModelForm):
 
 
 
+from django import forms
+from .models import Activite, Membre, Effectuer
 
+# Formulaire pour affecter des membres à une activité
+class AffecterMembreTacheForm(forms.ModelForm):
+    membres = forms.ModelMultipleChoiceField(
+        queryset=Membre.objects.none(),
+        widget=forms.SelectMultiple(attrs={'class': 'form-select'}),
+        label="Membres à affecter"
+    )
 
+    class Meta:
+        model = Effectuer
+        fields = ['activite', 'membres']
 
-
+    def __init__(self, *args, projet=None, equipe=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if projet:
+            self.fields['activite'].queryset = Activite.objects.filter(projet=projet)
+        if equipe:
+              self.fields['membres'].queryset = Membre.objects.filter(equipe=equipe)
 
 
 
@@ -422,21 +300,53 @@ class AffectationProjetForm(forms.ModelForm):
 
 
 class ActiviteForm(forms.ModelForm):
+    # class Meta:
+    #     model = Activite
+    #     fields = ['nom', 'description', 'date_debut', 'date_fin']
+    #     widgets = {
+    #         'date_debut': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+    #         'date_fin': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+    #         'nom': forms.TextInput(attrs={'class': 'form-control'}),
+    #         'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+    #     }
+    #     labels = {
+    #         'nom': 'Nom de l\'activité',
+    #         'description': 'Description',
+    #         'date_debut': 'Date de début',
+    #         'date_fin': 'Date de fin',
+    #     }
+
     class Meta:
         model = Activite
-        fields = ['nom', 'description', 'date_debut', 'date_fin']
+        exclude = ['statut']  # Ne pas afficher
         widgets = {
-            'date_debut': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'date_fin': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'nom': forms.TextInput(attrs={'class': 'form-control'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+            'date_debut': forms.DateInput(attrs={'type': 'date'}),
+            'date_fin': forms.DateInput(attrs={'type': 'date'}),
         }
-        labels = {
-            'nom': 'Nom de l\'activité',
-            'description': 'Description',
-            'date_debut': 'Date de début',
-            'date_fin': 'Date de fin',
-        }
+    def __init__(self, *args, projet=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Personnalise le queryset pour ne montrer que les tâches du projet en cours
+        if projet:
+            queryset = Activite.objects.filter(projet=projet)
+
+            # Si on est en modification d'une activité existante, on exclut cette activité elle-même
+            if self.instance and self.instance.id:
+                queryset = queryset.exclude(id=self.instance.id)
+
+            self.fields['tache_precedente'].queryset = queryset
+        else:
+            # Si pas de projet, on affiche rien (cas théorique ici)
+            self.fields['tache_precedente'].queryset = Activite.objects.none()
+    
+    def __init__(self, *args, projet=None, **kwargs):
+     super().__init__(*args, **kwargs)
+     if projet:
+        queryset = Activite.objects.filter(projet=projet)
+        if not queryset.exists():
+            self.fields['tache_precedente'].disabled = True
+            self.fields['tache_precedente'].help_text = "Aucune tâche disponible."
+        self.fields['tache_precedente'].queryset = queryset
 
     def clean(self):
         cleaned_data = super().clean()
@@ -446,6 +356,18 @@ class ActiviteForm(forms.ModelForm):
         if date_debut and date_fin and date_fin < date_debut:
             raise ValidationError("La date de fin ne peut pas précéder la date de début.")
         return cleaned_data
+    
+    
+class LivrableForm(forms.ModelForm):
+    class Meta:
+        model = Livrable
+        fields = ['nom_livrable']
+
+
+# Inline formset pour les livrables liés à une activité
+LivrableInlineFormSet = inlineformset_factory(
+    Activite, Livrable, form=LivrableForm, extra=1, can_delete=True
+)
 
 class MobilisationForm(forms.ModelForm):
     class Meta:
@@ -489,13 +411,13 @@ class RealiserForm(forms.ModelForm):
             self.fields['equipe'].queryset = Equipe.objects.filter(id__in=equipes_choices)
             # Ou simplement : self.fields['equipe'].queryset = equipes_choices
 
-class LivrableForm(forms.ModelForm):
-    class Meta:
-        model = Livrable
-        fields = ['nom_livrable']
-        widgets = {
-            'nom_livrable': forms.TextInput(attrs={'class': 'form-control'}),
-        }
-        labels = {
-            'nom_livrable': 'Nom du livrable',
-        }
+# # class LivrableForm(forms.ModelForm):
+#     class Meta:
+#         model = Livrable
+#         fields = ['nom_livrable']
+#         widgets = {
+#             'nom_livrable': forms.TextInput(attrs={'class': 'form-control'}),
+#         }
+#         labels = {
+#             'nom_livrable': 'Nom du livrable',
+#         }

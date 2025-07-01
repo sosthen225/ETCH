@@ -1,0 +1,157 @@
+{% extends 'index.html' %}
+{% block content %}
+
+<div class="container mt-5">
+  <h3 class="text-center mb-4">Ajouter des tâches au projet : {{ projet.nom }}</h3>
+
+  <form method="post">
+    {% csrf_token %}
+    {{ formset.management_form }}
+
+    <div id="task-forms-container">
+      <!-- Bloc template de base pour une tâche -->
+      {% for form in formset %}
+        <div class="card task-card mb-4 p-3 border border-primary">
+          <h5>Tâche {{ forloop.counter }}</h5>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">{{ form.nom.label_tag }} {{ form.nom }}</div>
+            <div class="col-md-6 mb-3">{{ form.description.label_tag }} {{ form.description }}</div>
+            <div class="col-md-6 mb-3">{{ form.date_debut.label_tag }} {{ form.date_debut }}</div>
+            <div class="col-md-6 mb-3">{{ form.date_fin.label_tag }} {{ form.date_fin }}</div>
+            <div class="col-md-6 mb-3">{{ form.tache_precedente.label_tag }} {{ form.tache_precedente }}</div>
+          </div>
+
+          <!-- Bloc livrables -->
+          <div class="mt-3">
+            <h6>Livrables</h6>
+            <div class="livrables-container" data-prefix="livrables-{{ forloop.counter0 }}">
+              <div class="livrable-group-list">
+                <!-- Exemple d’un livrable -->
+                <div class="row livrable-group">
+                  <div class="col-md-10">
+                    <input type="text" name="livrables-{{ forloop.counter0 }}-0-nom_livrable" class="form-control" placeholder="Nom du livrable" />
+                  </div>
+                  <div class="col-md-2">
+                    <button type="button" class="btn btn-danger btn-sm remove-livrable">Supprimer</button>
+                  </div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-info btn-sm add-livrable mt-2">+ Ajouter un livrable</button>
+            </div>
+          </div>
+          <!-- Fin bloc livrables -->
+
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="text-center mb-3">
+      <button type="submit" class="btn btn-success">Enregistrer les tâches</button>
+      <a href="{% url 'tabprojet' %}" class="btn btn-secondary">Retour aux projets</a>
+    </div>
+  </form>
+
+  <div class="text-center mb-4">
+    <button type="button" class="btn btn-primary" id="addTaskBtn">➕ Ajouter une tâche</button>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const container = document.getElementById("task-forms-container");
+    const addTaskBtn = document.getElementById("addTaskBtn");
+    const totalFormsInput = document.querySelector("[name='taches-TOTAL_FORMS']");
+    let currentCount = parseInt(totalFormsInput.value);
+
+    // Template HTML pour un groupe de livrables
+    function getLivrableHTML(taskIndex, livrableIndex) {
+        return `
+            <div class="row livrable-group">
+                <div class="col-md-10">
+                    <input type="text" name="livrables-${taskIndex}-${livrableIndex}-nom_livrable" class="form-control" placeholder="Nom du livrable" />
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-danger btn-sm remove-livrable">Supprimer</button>
+                </div>
+            </div>
+        `;
+    }
+
+    // Gestionnaire pour ajouter un livrable
+    function setupAddLivrableButtons() {
+        document.querySelectorAll(".add-livrable").forEach(btn => {
+            btn.removeEventListener("click", handleAddLivrable);
+            btn.addEventListener("click", handleAddLivrable);
+        });
+    }
+
+    // Fonction pour ajouter un livrable à une tâche
+    function handleAddLivrable(e) {
+        const containerDiv = e.target.closest(".livrables-container");
+        const taskIndex = containerDiv.dataset.prefix.replace("livrables-", "");
+        const livrableList = containerDiv.querySelector(".livrable-group-list");
+        const existingLivrables = containerDiv.querySelectorAll(".livrable-group");
+        const newLivrableIndex = existingLivrables.length;
+
+        const html = getLivrableHTML(taskIndex, newLivrableIndex);
+        const temp = document.createElement("div");
+        temp.innerHTML = html;
+        const newLivrable = temp.firstElementChild;
+
+        livrableList.appendChild(newLivrable);
+        setupRemoveLivrableButtons();
+    }
+
+    // Suppression d’un livrable
+    function setupRemoveLivrableButtons() {
+        document.querySelectorAll(".remove-livrable").forEach(btn => {
+            btn.addEventListener("click", function () {
+                this.closest(".livrable-group").remove();
+            });
+        });
+    }
+
+    // Création d’une nouvelle tâche
+    addTaskBtn.addEventListener("click", function () {
+        const firstCard = container.querySelector(".task-card");
+        const newCard = firstCard.cloneNode(true);
+
+        // Réinitialiser les champs texte
+        newCard.querySelectorAll("input[type=text], input[type=date]").forEach(input => input.value = "");
+
+        // Modifier les attributs name/id pour le nouveau index
+        newCard.querySelectorAll("input, select").forEach(input => {
+            const oldName = input.name;
+            const newName = oldName.replace(/\d+/, currentCount);
+            input.name = newName;
+            input.id = newName;
+        });
+
+        // Mettre à jour les livrables
+        const livrablesContainer = newCard.querySelector(".livrables-container");
+        livrablesContainer.dataset.prefix = "livrables-" + currentCount;
+        const livrableList = livrablesContainer.querySelector(".livrable-group-list");
+        livrableList.innerHTML = ""; // Vider
+
+        // Ajouter un premier livrable vide
+        const html = getLivrableHTML(currentCount, 0);
+        livrableList.innerHTML = html;
+
+        // Attacher événements
+        setupAddLivrableButtons();
+        setupRemoveLivrableButtons();
+
+        // Ajouter la nouvelle tâche
+        container.appendChild(newCard);
+        currentCount++;
+        totalFormsInput.value = currentCount;
+    });
+
+    // Initialisation des événements
+    setupAddLivrableButtons();
+    setupRemoveLivrableButtons();
+});
+</script>
+
+{% endblock %}

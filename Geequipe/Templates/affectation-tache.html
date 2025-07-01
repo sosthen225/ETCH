@@ -1,0 +1,170 @@
+{% extends 'index.html' %}
+
+{% block title %}Affectation d'Équipe{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row g-4">
+        <div class="col-md-12 col-lg-6">
+            <div class="card shadow rounded-4 mb-4">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Affecter une équipe à un projet</h5>
+                </div>
+                <div class="card-body">
+                    {% if form.errors %}
+                    <div class="alert alert-danger">
+                        <ul class="mb-0">
+                            {% for field in form %}
+                                {% for error in field.errors %}
+                                    <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                                {% endfor %}
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label class="form-label">Projet</label>
+                            {{ form.projet }}
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Équipe</label>
+                            {{ form.equipe }}
+                        </div>
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary">Affecter</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-12 mt-5">
+            <div class="card shadow rounded-4">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Affectations récentes</h5>
+                </div>
+                <div class="card-body">
+                    {% if affectations %}
+                    <div class="table-responsive">
+                        <table id="table-affectations" class="table table-bordered table-hover table-striped w-100">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Équipe</th>
+                                    <th>Projet</th>
+                                    <th>Statut</th>
+                                    <th>Date d'affectation</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for a in affectations %}
+                                <tr>
+                                    <td>{{ a.equipe.nom }}</td>
+                                    <td>{{ a.projet.nom }}</td>
+                                    <td>
+                                        {% if a.projet.statut == 'en_cours' %}
+                                            <span class="badge bg-success">En cours</span>
+                                        {% elif a.projet.statut == 'termine' %}
+                                            <span class="badge bg-danger">Terminé</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ a.projet.get_statut_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ a.date_affectation|date:"d/m/Y" }}</td>
+                                    <td>
+                                        {% if a.projet.statut == 'en_cours' %}
+                                            <form method="post" action="{% url 'supprimer_affectation' a.id %}" style="display:inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Confirmer l\'annulation de l\'affectation ?')">🗑️ Annuler l'affectation</button>
+                                            </form>
+                                            <a href="{% url 'allouer_taches' a.projet.id a.equipe.id %}" class="btn btn-sm btn-info ms-2">📊 Allouer les tâches</a>
+                                        {% else %}
+                                            <span class="text-muted">Non modifiable</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                        <p class="text-muted">Aucune affectation enregistrée pour le moment.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css"> 
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script> 
+<script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script> 
+
+<script>
+    $(document).ready(function () {
+        $('#table-affectations').DataTable({
+            language: {
+                search: "🔍 Rechercher :",
+                lengthMenu: "Afficher _MENU_ éléments",
+                info: "Page _PAGE_ sur _PAGES_",
+                paginate: {
+                    next: "Suivant",
+                    previous: "Précédent"
+                }
+            },
+            paging: true,
+            searching: true,
+            ordering: true,
+            autoWidth: false
+        });
+    });
+</script>
+
+<script>
+    $(document).ready(function () {
+        // Lorsqu'un projet est sélectionné, filtrer les équipes
+        $('#id_projet').on('change', function () {
+            var projetId = $(this).val();
+            $.ajax({
+                url: '{% url "equipes_disponibles" %}',
+                data: { projet_id: projetId },
+                success: function (data) {
+                    var $equipeSelect = $('#id_equipe');
+                    $equipeSelect.empty();
+                    if (data.length === 0) {
+                        $equipeSelect.append('<option value="">Aucune équipe disponible</option>');
+                    } else {
+                        $.each(data, function (i, obj) {
+                            $equipeSelect.append($('<option>').val(obj.id).text(obj.nom));
+                        });
+                    }
+                }
+            });
+        });
+
+        // Lorsqu'une équipe est sélectionnée, filtrer les projets
+        $('#id_equipe').on('change', function () {
+            var equipeId = $(this).val();
+            $.ajax({
+                url: '{% url "projets_disponibles" %}',
+                data: { equipe_id: equipeId },
+                success: function (data) {
+                    var $projetSelect = $('#id_projet');
+                    $projetSelect.empty();
+                    if (data.length === 0) {
+                        $projetSelect.append('<option value="">Aucun projet disponible</option>');
+                    } else {
+                        $.each(data, function (i, obj) {
+                            $projetSelect.append($('<option>').val(obj.id).text(obj.nom));
+                        });
+                    }
+                }
+            });
+        });
+    });
+</script>
+
+{% endblock %}

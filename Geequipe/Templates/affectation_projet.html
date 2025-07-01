@@ -3,10 +3,8 @@
 {% block title %}Affectation d'Équipe{% endblock %}
 
 {% block content %}
-<!-- Section formulaire -->
 <div class="container-fluid">
     <div class="row g-4">
-        <!-- Formulaire -->
         <div class="col-md-12 col-lg-6">
             <div class="card shadow rounded-4 mb-4">
                 <div class="card-header bg-dark text-white">
@@ -43,7 +41,6 @@
             </div>
         </div>
 
-        <!-- Tableau des affectations -->
         <div class="col-md-12 mt-5">
             <div class="card shadow rounded-4">
                 <div class="card-header bg-dark text-white">
@@ -68,26 +65,26 @@
                                     <td>{{ a.equipe.nom }}</td>
                                     <td>{{ a.projet.nom }}</td>
                                     <td>
-    {% if a.projet.statut == 'en_cours' %}
-        <span class="badge bg-success">En cours</span>
-    {% elif a.projet.statut == 'termine' %}
-        <span class="badge bg-danger">Terminé</span>
-    {% else %}
-        <span class="badge bg-secondary">{{ a.projet.get_statut_display }}</span>
-    {% endif %}
-</td>
-
+                                        {% if a.projet.statut == 'en_cours' %}
+                                            <span class="badge bg-success">En cours</span>
+                                        {% elif a.projet.statut == 'termine' %}
+                                            <span class="badge bg-danger">Terminé</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ a.projet.get_statut_display }}</span>
+                                        {% endif %}
+                                    </td>
                                     <td>{{ a.date_affectation|date:"d/m/Y" }}</td>
                                     <td>
-            {% if a.projet.statut == 'en_cours' %}
-                <form method="post" action="{% url 'supprimer_affectation' a.id %}" style="display:inline;">
-                    {% csrf_token %}
-                    <button class="btn btn-sm btn-danger" onclick="return confirm('Confirmer l'annulation de l'affectation ?')">🗑️ Annuler l'affection</button>
-                </form>
-            {% else %}
-                <span class="text-muted">Non modifiable</span>
-            {% endif %}
-        </td>
+                                        {% if a.projet.statut == 'en_cours' %}
+                                            <form method="post" action="{% url 'supprimer_affectation' a.id %}" style="display:inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Confirmer l\'annulation de l\'affectation ?')">🗑️ Annuler l'affectation</button>
+                                            </form>
+                                            <a href="{#}" class="btn btn-sm btn-info ms-2">📊 Allouer les tâches</a>
+                                        {% else %}
+                                            <span class="text-muted">Non modifiable</span>
+                                        {% endif %}
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -102,7 +99,6 @@
     </div>
 </div>
 
-<!-- DataTables CSS & JS -->
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.5/css/jquery.dataTables.min.css"> 
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script> 
 <script src="https://cdn.datatables.net/1.13.5/js/jquery.dataTables.min.js"></script> 
@@ -126,9 +122,6 @@
         });
     });
 </script>
-
-
-
 
 <script>
     $(document).ready(function () {
