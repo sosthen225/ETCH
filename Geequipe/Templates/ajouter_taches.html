@@ -1,60 +1,176 @@
 {% extends 'index.html' %}
 {% block content %}
 
-<div class="container mt-5">
-  <h3 class="text-center mb-4">Ajouter des tâches au projet : {{ projet.nom }}</h3>
+<style>
+    /* Styles personnalisés pour un formulaire au juste milieu, et champs améliorés */
+    .responsive-form-container {
+        /* Plus large que la précédente, mais pas plein écran */
+        max-width: 900px; /* Ajustez cette valeur si vous souhaitez plus ou moins large */
+        margin: 40px auto; /* Centre le conteneur */
+        padding: 0 15px;
+    }
 
-  <form method="post">
-    {% csrf_token %}
-    {{ formset.management_form }}
+    /* Style des champs de formulaire généraux */
+    .form-control-custom {
+        border: 1px solid #ced4da; /* Bordure par défaut */
+        border-radius: 0.375rem; /* Coins légèrement arrondis */
+        padding: 0.5rem 0.75rem; /* Padding pour une meilleure aération */
+        font-size: 1rem; /* Taille de police standard */
+        line-height: 1.5;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        width: 100%; /* Assure que le champ prend toute la largeur disponible */
+    }
 
-    <div id="task-forms-container">
-      <!-- Bloc template de base pour une tâche -->
-      {% for form in formset %}
-        <div class="card task-card mb-4 p-3 border border-primary">
-          <h5>Tâche {{ forloop.counter }}</h5>
+    .form-control-custom:focus {
+        border-color: #86b7fe; /* Bordure bleue au focus */
+        outline: 0;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); /* Ombre bleue légère au focus */
+    }
 
-          <div class="row">
-            <div class="col-md-6 mb-3">{{ form.nom.label_tag }} {{ form.nom }}</div>
-            <div class="col-md-6 mb-3">{{ form.description.label_tag }} {{ form.description }}</div>
-            <div class="col-md-6 mb-3">{{ form.date_debut.label_tag }} {{ form.date_debut }}</div>
-            <div class="col-md-6 mb-3">{{ form.date_fin.label_tag }} {{ form.date_fin }}</div>
-            <div class="col-md-6 mb-3">{{ form.tache_precedente.label_tag }} {{ form.tache_precedente }}</div>
-          </div>
+    .form-control-custom::placeholder {
+        color: #6c757d; /* Couleur du placeholder */
+        opacity: 1; /* Assure la visibilité du placeholder */
+    }
 
-          <!-- Bloc livrables -->
-          <div class="mt-3">
-            <h6>Livrables</h6>
-            <div class="livrables-container" data-prefix="livrables-{{ forloop.counter0 }}">
-              <div class="livrable-group-list">
-                <!-- Exemple d’un livrable -->
-                <div class="row livrable-group">
-                  <div class="col-md-10">
-                    <input type="text" name="livrables-{{ forloop.counter0 }}-0-nom_livrable" class="form-control" placeholder="Nom du livrable" />
-                  </div>
-                  <div class="col-md-2">
-                    <button type="button" class="btn btn-danger btn-sm remove-livrable">Supprimer</button>
-                  </div>
-                </div>
-              </div>
-              <button type="button" class="btn btn-info btn-sm add-livrable mt-2">+ Ajouter un livrable</button>
-            </div>
-          </div>
-          <!-- Fin bloc livrables -->
+    /* Styles spécifiques pour les sélecteurs (dropdowns) */
+    .form-select-custom {
+        display: block;
+        width: 100%;
+        padding: 0.5rem 2.25rem 0.5rem 0.75rem; /* Plus d'espace à droite pour la flèche */
+        font-size: 1rem;
+        font-weight: 400;
+        line-height: 1.5;
+        color: #212529;
+        background-color: #fff;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e"); /* Flèche personnalisée */
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 16px 12px;
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+        appearance: none; /* Cache la flèche par défaut du navigateur */
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
 
+    .form-select-custom:focus {
+        border-color: #86b7fe;
+        outline: 0;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+
+    /* Ajustements généraux des paddings et marges */
+    .card-body.padded-card-body {
+        padding: 25px 30px; /* Un peu plus de padding pour l'aération */
+    }
+
+    .form-group-spaced {
+        margin-bottom: 1.5rem; /* Un peu plus d'espace entre les groupes de champs */
+    }
+
+    /* Ajustement des labels */
+    .form-group-spaced label {
+        margin-bottom: 0.5rem; /* Espace sous le label */
+        font-weight: 500; /* Un peu plus gras */
+        display: block; /* S'assure que le label est sur sa propre ligne */
+    }
+
+    /* Styles pour les livrables */
+    .livrable-group .form-control-custom {
+        padding: 0.375rem 0.75rem; /* Plus petit pour les livrables */
+        font-size: 0.875rem;
+    }
+</style>
+
+<div class="responsive-form-container"> {# Nouvelle classe pour le conteneur principal #}
+    <div class="card shadow-lg border-0 rounded-lg">
+        <div class="card-header bg-primary text-white text-center py-3">
+            <h4 class="mb-0">Ajouter des tâches au projet : <br><strong>{{ projet.nom }}</strong></h4>
         </div>
-      {% endfor %}
-    </div>
+        <div class="card-body padded-card-body"> {# Nouvelle classe de padding #}
+            <form method="post">
+                {% csrf_token %}
+                {{ formset.management_form }}
 
-    <div class="text-center mb-3">
-      <button type="submit" class="btn btn-success">Enregistrer les tâches</button>
-      <a href="{% url 'tabprojet' %}" class="btn btn-secondary">Retour aux projets</a>
-    </div>
-  </form>
+                <div id="task-forms-container">
+                    {% for form in formset %}
+                        <div class="card task-card mb-4 border border-secondary"> {# Retour à mb-4 pour plus d'espace entre les tâches #}
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                                <h5 class="mb-0 text-primary">Tâche {{ forloop.counter }}</h5> {# Retour à h5 pour le titre de tâche #}
+                                {% if forloop.counter > 1 %}
+                                    <button type="button" class="btn btn-outline-danger btn-sm remove-task">Supprimer</button>
+                                {% endif %}
+                            </div>
+                            <div class="card-body row gx-3 gy-3"> {# Retour à gx-3 gy-3 pour un peu plus d'espacement #}
+                                <div class="col-md-6"> {# Deux colonnes sur moyens et grands écrans #}
+                                    <div class="form-group form-group-spaced"> {# Nouvelle classe pour l'espacement #}
+                                        {{ form.nom.label_tag }}
+                                        <input type="text" name="{{ form.nom.name }}" id="{{ form.nom.id }}" class="form-control-custom" placeholder="Nom de la tâche" value="{{ form.nom.value|default_if_none:'' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group form-group-spaced">
+                                        {{ form.description.label_tag }}
+                                        <textarea name="{{ form.description.name }}" id="{{ form.description.id }}" class="form-control-custom" placeholder="Description détaillée" rows="3">{{ form.description.value|default_if_none:'' }}</textarea>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group form-group-spaced">
+                                        {{ form.date_debut.label_tag }}
+                                        <input type="date" name="{{ form.date_debut.name }}" id="{{ form.date_debut.id }}" class="form-control-custom" value="{{ form.date_debut.value|default_if_none:''|date:'Y-m-d' }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group form-group-spaced">
+                                        {{ form.date_fin.label_tag }}
+                                        <input type="date" name="{{ form.date_fin.name }}" id="{{ form.date_fin.id }}" class="form-control-custom" value="{{ form.date_fin.value|default_if_none:''|date:'Y-m-d' }}">
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-group form-group-spaced">
+                                        {{ form.tache_precedente.label_tag }}
+                                        {# Attention: Pour le select, il faut s'assurer que Django génère bien les options #}
+                                        {# Ici, on ne peut pas cloner le select directement et garder les options dynamiques #}
+                                        {# Donc on laisse Django le générer, et on applique la classe custom via forms.py #}
+                                        {{ form.tache_precedente }} 
+                                    </div>
+                                </div>
 
-  <div class="text-center mb-4">
-    <button type="button" class="btn btn-primary" id="addTaskBtn">➕ Ajouter une tâche</button>
-  </div>
+                                <div class="col-12 mt-3">
+                                    <h6 class="mb-2">Livrables</h6>
+                                    <div class="livrables-container" data-prefix="livrables-{{ forloop.counter0 }}">
+                                        <div class="livrable-group-list">
+                                            {% if form.instance.livrable_set.all %}
+                                                {% for livrable in form.instance.livrable_set.all %}
+                                                    <div class="input-group input-group-sm mb-2 livrable-group"> {# Retour à mb-2 #}
+                                                        <input type="text" name="livrables-{{ forloop.parentloop.counter0 }}-{{ forloop.counter0 }}-nom_livrable" value="{{ livrable.nom_livrable|default_if_none:'' }}" class="form-control-custom" placeholder="Nom du livrable" />
+                                                        <button type="button" class="btn btn-outline-danger btn-sm remove-livrable">Supprimer</button>
+                                                    </div>
+                                                {% endfor %}
+                                            {% else %}
+                                                <div class="input-group input-group-sm mb-2 livrable-group">
+                                                    <input type="text" name="livrables-{{ forloop.counter0 }}-0-nom_livrable" class="form-control-custom" placeholder="Nom du livrable" />
+                                                    <button type="button" class="btn btn-outline-danger btn-sm remove-livrable">Supprimer</button>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                        <button type="button" class="btn btn-info btn-sm add-livrable mt-2">+ Ajouter un livrable</button> {# Retour à mt-2 #}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="d-flex justify-content-center gap-3 mt-4">
+                    <button type="submit" class="btn btn-success btn-lg">Enregistrer les tâches</button> {# Retour à btn-lg pour les boutons d'action #}
+                    <a href="{% url 'tabprojet' %}" class="btn btn-secondary btn-lg">Retour aux projets</a>
+                </div>
+            </form>
+        </div>
+        <div class="card-footer bg-light text-center py-3"> {# Retour à py-3 #}
+            <button type="button" class="btn btn-primary btn-lg" id="addTaskBtn">➕ Ajouter une tâche</button> {# Retour à btn-lg #}
+        </div>
+    </div>
 </div>
 
 <script>
@@ -62,95 +178,215 @@ document.addEventListener("DOMContentLoaded", function () {
     const container = document.getElementById("task-forms-container");
     const addTaskBtn = document.getElementById("addTaskBtn");
     const totalFormsInput = document.querySelector("[name='taches-TOTAL_FORMS']");
-    let currentCount = parseInt(totalFormsInput.value);
 
-    // Template HTML pour un groupe de livrables
+    function updateFormCounts() {
+        const taskCards = container.querySelectorAll('.task-card');
+        totalFormsInput.value = taskCards.length;
+
+        taskCards.forEach((taskCard, taskIndex) => {
+            // Update task card header
+            taskCard.querySelector('h5').textContent = `Tâche ${taskIndex + 1}`; // Now h5 again
+            taskCard.querySelector('h5').className = 'mb-0 text-primary';
+
+            // Update input fields within the task card
+            taskCard.querySelectorAll('input, select, textarea').forEach(element => {
+                const oldName = element.name || '';
+                const newName = oldName.replace(/taches-\d+/, `taches-${taskIndex}`);
+                if (element.name) element.name = newName;
+                if (element.id) element.id = newName;
+            });
+            taskCard.querySelectorAll('label').forEach(label => { // Update label htmlFor attribute
+                const oldHtmlFor = label.htmlFor || '';
+                const newHtmlFor = oldHtmlFor.replace(/taches-\d+/, `taches-${taskIndex}`);
+                if (label.htmlFor) label.htmlFor = newHtmlFor;
+            });
+
+
+            // Update livrables container data-prefix
+            const livrablesContainer = taskCard.querySelector('.livrables-container');
+            if (livrablesContainer) {
+                livrablesContainer.dataset.prefix = `livrables-${taskIndex}`;
+                // Reindex livrables within this task
+                livrablesContainer.querySelectorAll('.livrable-group').forEach((livrableGroup, livrableIndex) => {
+                    livrableGroup.querySelectorAll('input').forEach(livrableInput => {
+                        livrableInput.name = `livrables-${taskIndex}-${livrableIndex}-nom_livrable`;
+                    });
+                });
+            }
+
+            // Show/hide remove task button
+            const removeTaskBtn = taskCard.querySelector('.remove-task');
+            if (removeTaskBtn) {
+                if (taskIndex === 0 && taskCards.length === 1) { // Only hide if it's the *only* task
+                    removeTaskBtn.style.display = 'none';
+                } else {
+                    removeTaskBtn.style.display = 'inline-block';
+                }
+            }
+        });
+    }
+
+    // Template HTML for a livrable group
     function getLivrableHTML(taskIndex, livrableIndex) {
         return `
-            <div class="row livrable-group">
-                <div class="col-md-10">
-                    <input type="text" name="livrables-${taskIndex}-${livrableIndex}-nom_livrable" class="form-control" placeholder="Nom du livrable" />
-                </div>
-                <div class="col-md-2">
-                    <button type="button" class="btn btn-danger btn-sm remove-livrable">Supprimer</button>
-                </div>
+            <div class="input-group input-group-sm mb-2 livrable-group">
+                <input type="text" name="livrables-${taskIndex}-${livrableIndex}-nom_livrable" class="form-control-custom" placeholder="Nom du livrable" />
+                <button type="button" class="btn btn-outline-danger btn-sm remove-livrable">Supprimer</button>
             </div>
         `;
     }
 
-    // Gestionnaire pour ajouter un livrable
-    function setupAddLivrableButtons() {
-        document.querySelectorAll(".add-livrable").forEach(btn => {
-            btn.removeEventListener("click", handleAddLivrable);
-            btn.addEventListener("click", handleAddLivrable);
-        });
-    }
-
-    // Fonction pour ajouter un livrable à une tâche
+    // Add Livrable event handler
     function handleAddLivrable(e) {
         const containerDiv = e.target.closest(".livrables-container");
         const taskIndex = containerDiv.dataset.prefix.replace("livrables-", "");
         const livrableList = containerDiv.querySelector(".livrable-group-list");
-        const existingLivrables = containerDiv.querySelectorAll(".livrable-group");
+        const existingLivrables = livrableList.querySelectorAll(".livrable-group");
         const newLivrableIndex = existingLivrables.length;
 
         const html = getLivrableHTML(taskIndex, newLivrableIndex);
         const temp = document.createElement("div");
         temp.innerHTML = html;
-        const newLivrable = temp.firstElementChild;
-
-        livrableList.appendChild(newLivrable);
-        setupRemoveLivrableButtons();
+        livrableList.appendChild(temp.firstElementChild);
+        attachLivrableEvents(); // Re-attach events for new button
     }
 
-    // Suppression d’un livrable
-    function setupRemoveLivrableButtons() {
+    // Remove Livrable event handler
+    function handleRemoveLivrable() {
+        this.closest(".livrable-group").remove();
+        updateFormCounts(); // Update counts and reindex after removal
+    }
+
+    // Attach livrable add/remove events
+    function attachLivrableEvents() {
+        document.querySelectorAll(".add-livrable").forEach(btn => {
+            btn.removeEventListener("click", handleAddLivrable);
+            btn.addEventListener("click", handleAddLivrable);
+        });
         document.querySelectorAll(".remove-livrable").forEach(btn => {
-            btn.addEventListener("click", function () {
-                this.closest(".livrable-group").remove();
-            });
+            btn.removeEventListener("click", handleRemoveLivrable);
+            btn.addEventListener("click", handleRemoveLivrable);
+        });
+    }
+
+    // Remove Task event handler
+    function handleRemoveTask() {
+        this.closest(".task-card").remove();
+        updateFormCounts(); // Update counts and reindex after removal
+        attachLivrableEvents(); // Re-attach livrable events as indices change
+        attachTaskEvents(); // Re-attach task events for remaining cards
+    }
+
+    // Attach task remove events
+    function attachTaskEvents() {
+        document.querySelectorAll(".remove-task").forEach(btn => {
+            btn.removeEventListener("click", handleRemoveTask);
+            btn.addEventListener("click", handleRemoveTask);
         });
     }
 
     // Création d’une nouvelle tâche
     addTaskBtn.addEventListener("click", function () {
         const firstCard = container.querySelector(".task-card");
-        const newCard = firstCard.cloneNode(true);
+        let newCard;
+        let newTaskIndex = parseInt(totalFormsInput.value);
 
-        // Réinitialiser les champs texte
-        newCard.querySelectorAll("input[type=text], input[type=date]").forEach(input => input.value = "");
+        if (firstCard) {
+            newCard = firstCard.cloneNode(true);
 
-        // Modifier les attributs name/id pour le nouveau index
-        newCard.querySelectorAll("input, select").forEach(input => {
-            const oldName = input.name;
-            const newName = oldName.replace(/\d+/, currentCount);
-            input.name = newName;
-            input.id = newName;
-        });
+            // Réinitialiser les champs texte et sélectionner la première option
+            newCard.querySelectorAll("input[type=text], input[type=date], textarea").forEach(input => input.value = "");
+            newCard.querySelectorAll("select").forEach(select => {
+                select.selectedIndex = 0;
+                // Supprimer les options existantes sauf la première (qui est souvent "---") si vous gérez les options dynamiquement
+                // Si les options sont fixes ou gérées par Django, ce n'est pas nécessaire.
+                // Ici, on fait le plus simple: on clone, puis Django se chargera des options à la soumission
+            });
 
-        // Mettre à jour les livrables
-        const livrablesContainer = newCard.querySelector(".livrables-container");
-        livrablesContainer.dataset.prefix = "livrables-" + currentCount;
-        const livrableList = livrablesContainer.querySelector(".livrable-group-list");
-        livrableList.innerHTML = ""; // Vider
+            // Mettre à jour les livrables
+            const livrablesContainer = newCard.querySelector(".livrables-container");
+            livrablesContainer.dataset.prefix = "livrables-" + newTaskIndex;
+            const livrableList = livrablesContainer.querySelector(".livrable-group-list");
+            livrableList.innerHTML = getLivrableHTML(newTaskIndex, 0); // Ajouter un premier livrable vide
+            
+            // Mettre à jour les attributs name/id pour le nouveau index dans les champs clonés
+            newCard.querySelectorAll("input, select, textarea").forEach(input => {
+                const oldName = input.name;
+                const newName = oldName.replace(/taches-\d+/, `taches-${newTaskIndex}`);
+                input.name = newName;
+                input.id = newName;
+            });
+             newCard.querySelectorAll("label").forEach(label => { // Update label htmlFor attribute
+                const oldHtmlFor = label.htmlFor || '';
+                const newHtmlFor = oldHtmlFor.replace(/taches-\d+/, `taches-${newTaskIndex}`);
+                if (label.htmlFor) label.htmlFor = newHtmlFor;
+            });
 
-        // Ajouter un premier livrable vide
-        const html = getLivrableHTML(currentCount, 0);
-        livrableList.innerHTML = html;
 
-        // Attacher événements
-        setupAddLivrableButtons();
-        setupRemoveLivrableButtons();
+        } else { // Si aucune tâche n'existe, créer une structure de base
+            newCard = document.createElement('div');
+            newCard.classList.add('card', 'task-card', 'mb-4', 'border', 'border-secondary');
+            newCard.innerHTML = `
+                <div class="card-header bg-light d-flex justify-content-between align-items-center py-2">
+                    <h5 class="mb-0 text-primary">Tâche ${newTaskIndex + 1}</h5>
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-task">Supprimer</button>
+                </div>
+                <div class="card-body row gx-3 gy-3">
+                    <div class="col-md-6">
+                        <div class="form-group form-group-spaced">
+                            <label for="id_taches-${newTaskIndex}-nom">Nom:</label>
+                            <input type="text" name="taches-${newTaskIndex}-nom" class="form-control-custom" placeholder="Nom de la tâche" id="id_taches-${newTaskIndex}-nom">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group form-group-spaced">
+                            <label for="id_taches-${newTaskIndex}-description">Description:</label>
+                            <textarea name="taches-${newTaskIndex}-description" class="form-control-custom" placeholder="Description détaillée" id="id_taches-${newTaskIndex}-description" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group form-group-spaced">
+                            <label for="id_taches-${newTaskIndex}-date_debut">Date de début:</label>
+                            <input type="date" name="taches-${newTaskIndex}-date_debut" class="form-control-custom" id="id_taches-${newTaskIndex}-date_debut">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group form-group-spaced">
+                            <label for="id_taches-${newTaskIndex}-date_fin">Date de fin:</label>
+                            <input type="date" name="taches-${newTaskIndex}-date_fin" class="form-control-custom" id="id_taches-${newTaskIndex}-date_fin">
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-group form-group-spaced">
+                            <label for="id_taches-${newTaskIndex}-tache_precedente">Tâche précédente:</label>
+                            <select name="taches-${newTaskIndex}-tache_precedente" class="form-select-custom" id="id_taches-${newTaskIndex}-tache_precedente">
+                                </select>
+                        </div>
+                    </div>
 
-        // Ajouter la nouvelle tâche
+                    <div class="col-12 mt-3">
+                        <h6 class="mb-2">Livrables</h6>
+                        <div class="livrables-container" data-prefix="livrables-${newTaskIndex}">
+                            <div class="livrable-group-list">
+                                ${getLivrableHTML(newTaskIndex, 0)}
+                            </div>
+                            <button type="button" class="btn btn-info btn-sm add-livrable mt-2">+ Ajouter un livrable</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         container.appendChild(newCard);
-        currentCount++;
-        totalFormsInput.value = currentCount;
+        updateFormCounts();
+        attachLivrableEvents();
+        attachTaskEvents();
     });
 
-    // Initialisation des événements
-    setupAddLivrableButtons();
-    setupRemoveLivrableButtons();
+    // Initialisation des événements au chargement de la page
+    updateFormCounts();
+    attachLivrableEvents();
+    attachTaskEvents();
 });
 </script>
 

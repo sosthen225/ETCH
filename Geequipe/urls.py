@@ -43,7 +43,7 @@ urlpatterns = [
     path('creer_mobilisation/<int:projet_id>/',creer_mobilisation, name='creer_mobilisation'),
          
     path('mobiliser_equipes/<int:projet_id>/', mobiliser_equipes, name='mobiliser_equipes'),
-    path('resume_mobilisation/',resume_mobilisation, name='resume_mobilisation'),
+    path('resume_mobilisation/<int:mobilisation_id>/', resume_mobilisation, name='resume_mobilisation'),
     path('liste_mobilisations/', liste_mobilisations, name='liste_mobilisations'),
 
     path('activites/', liste_activites, name='liste_activites'),

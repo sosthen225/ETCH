@@ -99,9 +99,9 @@ def index(request):
     projet_encours= Projet.objects.filter(statut='en_cours').order_by('-date_fin')[:10]
     completed_projects_list = Projet.objects.filter(statut='terminé').order_by('-date_fin')[:10] # Obtenir les 10 derniers projets terminés
 
-    # Pour les notifications : Projets se terminant bientôt (par exemple, dans les 2 semaines)
+    # Pour les notifications : Projets se terminant bientôt (par exemple, dans une semaine)
     today = date.today()
-    one_month_from_now = today + timedelta(days=14)
+    one_month_from_now = today + timedelta(days=7)
     upcoming_projects = Projet.objects.filter(
     date_fin__gt=today,
     date_fin__lte=one_month_from_now,
@@ -758,6 +758,7 @@ def ajouter_taches(request, projet_id):
     return render(request, "ajouter_taches.html", context)
 
 
+
 import openpyxl
 from django.http import HttpResponse
 from .models import Projet, Activite, Livrable
@@ -830,104 +831,81 @@ def mobiliser_equipes(request, projet_id):
 
 
 
+
+
+from django.shortcuts import get_object_or_404, render, redirect
+from django.db import transaction
+from django.contrib import messages
+from .models import Projet, Activite, Equipe, AffectationProjet, Realiser, Mobilisation
+from .forms import MobilisationForm
+
 def creer_mobilisation(request, projet_id):
     projet = get_object_or_404(Projet, id=projet_id)
-    equipes_pre_affectees = Equipe.objects.filter(affectations_projet__projet=projet).distinct()
+    equipes_pre_affectees = Equipe.objects.filter(affectations_projet__projet=projet)
 
-    # Formset pour Realiser (liaison Activité-Équipe)
-    # Nous aurons besoin d'un formulaire pour chaque équipe sélectionnée.
-    # Pour l'instant, on va gérer la sélection des équipes via le template directement
-    # et créer les objets Realiser dans la vue.
-
-    # Formset pour Livrables
-    LivrableFormSet = formset_factory(LivrableForm, extra=1, can_delete=True)
+    # Liste des activités du projet
+    activites = projet.activites.all()
 
     if request.method == 'POST':
-        activite_form = ActiviteForm(request.POST)
+        activite_id = request.POST.get('activite')
         mobilisation_form = MobilisationForm(request.POST)
-        livrable_formset = LivrableFormSet(request.POST, prefix='livrable')
         equipe_ids = request.POST.getlist('equipes_selectionnees')
 
-        # Validation des équipes sélectionnées
-        if not equipe_ids:
-            messages.error(request, "Veuillez sélectionner au moins une équipe à mobiliser.")
+        # Validation de la sélection de l'activité
+        if not activite_id:
+            messages.error(request, "Veuillez sélectionner une activité.")
             return render(request, 'organiser_mobilisation.html', {
                 'projet': projet,
                 'equipes_pre_affectees': equipes_pre_affectees,
-                'activite_form': activite_form,
+                'activites': activites,
                 'mobilisation_form': mobilisation_form,
-                'livrable_formset': livrable_formset,
             })
 
-        if activite_form.is_valid() and mobilisation_form.is_valid() and livrable_formset.is_valid():
+        activite = get_object_or_404(Activite, id=activite_id, projet=projet)
+
+        if not equipe_ids:
+            messages.error(request, "Veuillez sélectionner au moins une équipe.")
+            return render(request, 'organiser_mobilisation.html', {
+                'projet': projet,
+                'equipes_pre_affectees': equipes_pre_affectees,
+                'activites': activites,
+                'mobilisation_form': mobilisation_form,
+            })
+
+        if mobilisation_form.is_valid():
             try:
                 with transaction.atomic():
-                    # 1. Enregistrer l'activité
-                    activite = activite_form.save(commit=False)
-                    activite.projet = projet
-                    activite.statut = "Planifiée" # Assurez-vous que le statut est géré ici ou par défaut dans le modèle
-                    activite.save()
-
-                    # 2. Enregistrer la mobilisation
+                    # Enregistrer la mobilisation
                     mobilisation = mobilisation_form.save(commit=False)
                     mobilisation.activite = activite
-                    # Assurez-vous que request.user.chefprojet existe et est correctement lié
-                    # Si c'est un OneToOneField depuis User, ça devrait être bon.
-                    # Sinon, vous devrez peut-être le récupérer différemment.
-                    try:
-                        mobilisation.chef_projet = request.user.chefprojet
-                    except ChefProjet.DoesNotExist:
-                        messages.error(request, "L'utilisateur connecté n'est pas associé à un Chef de Projet.")
-                        raise # Renvoyer l'erreur pour annuler la transaction
-
-                    # Les dates de mobilisation peuvent être les mêmes que l'activité ou spécifiques
-                    # Si elles sont les mêmes que l'activité :
-                    mobilisation.date_debut = activite.date_debut
-                    mobilisation.date_fin = activite.date_fin
-                    # Si elles sont distinctes, utilisez les valeurs du formulaire de mobilisation
-
+                    mobilisation.chef_projet = request.user.chef_projet
                     mobilisation.save()
 
-                    # 3. Enregistrer les liaisons Activité-Équipe (Realiser)
+                    # Associer les équipes à l'activité via Realiser
                     for equipe_id in equipe_ids:
                         equipe = get_object_or_404(Equipe, id=equipe_id)
                         Realiser.objects.create(
                             equipe=equipe,
                             activite=activite
-                             
                         )
 
-                    # 4. Enregistrer les livrables
-                    for form in livrable_formset:
-                        if form.has_changed() and not form.cleaned_data.get('DELETE', False):
-                            livrable = form.save(commit=False)
-                            livrable.activite = activite
-                            livrable.save()
-
                     messages.success(request, "Mobilisation enregistrée avec succès.")
-                    return redirect('resume_mobilisation') # Assurez-vous que cette URL existe
+                    return redirect('resume_mobilisation', mobilisation_id=mobilisation.id)  
 
             except Exception as e:
-                messages.error(request, f"Une erreur est survenue lors de l'enregistrement de la mobilisation : {e}")
-                # Re-rendre le formulaire avec les données POST pour permettre correction
+                messages.error(request, f"Une erreur est survenue : {e}")
         else:
-            # Si les formulaires ne sont pas valides, les messages d'erreur de validation seront affichés par le template.
             messages.error(request, "Veuillez corriger les erreurs dans le formulaire.")
 
     else:
-        # Initialisation des formulaires pour une requête GET
-        activite_form = ActiviteForm()
         mobilisation_form = MobilisationForm()
-        livrable_formset = LivrableFormSet(prefix='livrable')
 
     return render(request, 'organiser_mobilisation.html', {
         'projet': projet,
         'equipes_pre_affectees': equipes_pre_affectees,
-        'activite_form': activite_form,
+        'activites': activites,
         'mobilisation_form': mobilisation_form,
-        'livrable_formset': livrable_formset,
     })
-
 
 
 
@@ -968,7 +946,7 @@ def resume_mobilisation(request, mobilisation_id):
     activite = mobilisation.activite
     equipes = mobilisation.activite.equipes_realisation.all()
 
-    return render(request, 'liste_mobilisation.html', {
+    return render(request, 'resume_mobilisation.html', {
         'mobilisation': mobilisation,
         'activite': activite,
         'equipes': equipes,
@@ -981,8 +959,6 @@ from django.db.models import Prefetch
 def liste_mobilisations(request):
     #mobilisations = Mobilisation.objects.select_related('activite', 'chef_projet').all().order_by('-date_debut')
     mobilisations = Mobilisation.objects.select_related('activite', 'chef_projet').prefetch_related(Prefetch('activite__equipes_realisation', queryset=Realiser.objects.select_related('equipe'), to_attr='prefetched_equipes_realisation'  )  ).order_by('-date_debut')# Précharger les équipes via Realiser et Activite si besoin
-   
-
     context = {
         'mobilisations': mobilisations,
     }
@@ -990,12 +966,16 @@ def liste_mobilisations(request):
 
 
 
+
+
 def liste_activites(request):
-    activites = Activite.objects.select_related('projet').prefetch_related('equipes_realisation', 'livrables').order_by('created_at')
+    activites = Activite.objects.select_related('projet').prefetch_related('equipes_realisation', 'livrables').filter(projet__statut='en_cours').order_by('created_at')
+
     return render(request, 'activites.html', {
         'activites': activites,
         'statut_choices': STATUT_ACTIVITIES_CHOICES,
     })
+
 
 
 

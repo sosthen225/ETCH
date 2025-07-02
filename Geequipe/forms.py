@@ -300,22 +300,7 @@ class AffecterMembreTacheForm(forms.ModelForm):
 
 
 class ActiviteForm(forms.ModelForm):
-    # class Meta:
-    #     model = Activite
-    #     fields = ['nom', 'description', 'date_debut', 'date_fin']
-    #     widgets = {
-    #         'date_debut': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-    #         'date_fin': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-    #         'nom': forms.TextInput(attrs={'class': 'form-control'}),
-    #         'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
-    #     }
-    #     labels = {
-    #         'nom': 'Nom de l\'activité',
-    #         'description': 'Description',
-    #         'date_debut': 'Date de début',
-    #         'date_fin': 'Date de fin',
-    #     }
-
+   
     class Meta:
         model = Activite
         exclude = ['statut']  # Ne pas afficher
@@ -363,18 +348,16 @@ class LivrableForm(forms.ModelForm):
         model = Livrable
         fields = ['nom_livrable']
 
+# Inline FormSet pour les livrables liés à une Activité
+LivrableInlineFormSet = inlineformset_factory(Activite, Livrable, form=LivrableForm, extra=1, can_delete=True)
 
-# Inline formset pour les livrables liés à une activité
-LivrableInlineFormSet = inlineformset_factory(
-    Activite, Livrable, form=LivrableForm, extra=1, can_delete=True
-)
+
+
 
 class MobilisationForm(forms.ModelForm):
     class Meta:
         model = Mobilisation
-        fields = ['site', 'date_debut', 'date_fin'] # date_debut et date_fin sont redondantes ici si elles sont tirées de l'activité.
-                                                  # Si elles sont spécifiques à la mobilisation, gardez-les.
-                                                  # Sinon, vous pouvez les retirer et les définir à partir de l'activité dans la vue.
+        fields = ['site', 'date_debut', 'date_fin']
         widgets = {
             'site': forms.TextInput(attrs={'class': 'form-control'}),
             'date_debut': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
@@ -410,14 +393,3 @@ class RealiserForm(forms.ModelForm):
         if equipes_choices:
             self.fields['equipe'].queryset = Equipe.objects.filter(id__in=equipes_choices)
             # Ou simplement : self.fields['equipe'].queryset = equipes_choices
-
-# # class LivrableForm(forms.ModelForm):
-#     class Meta:
-#         model = Livrable
-#         fields = ['nom_livrable']
-#         widgets = {
-#             'nom_livrable': forms.TextInput(attrs={'class': 'form-control'}),
-#         }
-#         labels = {
-#             'nom_livrable': 'Nom du livrable',
-#         }

@@ -1,220 +1,81 @@
 {% extends 'index.html' %}
-
-
+{% load static %}
+{% block title %}Organiser une Mobilisation{% endblock %}
 {% block content %}
-<div class="container mt-4">
-    <div class="text-center mb-4">
-        <h4 class="display-6 fw-bold text-primary">Organiser une Mobilisation</h4>
-        <p class="lead text-muted">pour le projet : <strong class="text-dark">{{ projet.nom }}</strong></p>
+<div class="container mt-5">
+  <h2 class="mb-4">Organiser une Mobilisation pour le Projet : {{ projet.nom }}</h2>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+
+    <!-- Sélection de l'activité -->
+    <div class="card mb-4">
+      <div class="card-header bg-primary text-white">
+        Étape 1 : Sélectionnez une activité
+      </div>
+      <div class="card-body">
+        <select name="activite" class="form-control" required>
+          <option value="">-- Sélectionner une activité --</option>
+          {% for activite in activites %}
+            <option value="{{ activite.id }}" {% if activite.id|slugify == selected_activite_id|slugify %}selected{% endif %}>
+              {{ activite.nom }} - {{ activite.description|truncatechars:50 }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
     </div>
 
-    {% if messages %}
-        <div class="my-3">
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            {% endfor %}
+    <!-- Sélection des équipes -->
+    <div class="card mb-4">
+      <div class="card-header bg-primary text-white">
+        Étape 2 : Sélectionnez les équipes à mobiliser
+      </div>
+      <div class="card-body">
+        <select name="equipes_selectionnees" multiple class="form-control" size="8" required>
+          {% for equipe in equipes_pre_affectees %}
+            <option value="{{ equipe.id }}">{{ equipe.nom }}</option>
+          {% endfor %}
+        </select>
+        <small class="text-muted">Maintenez la touche Ctrl (ou Cmd sur Mac) pour sélectionner plusieurs équipes.</small>
+      </div>
+    </div>
+
+    <!-- Informations de mobilisation -->
+    <div class="card mb-4">
+      <div class="card-header bg-primary text-white">
+        Étape 3 : Informations de mobilisation
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-6">
+            {{ mobilisation_form.site.label_tag }}
+            {{ mobilisation_form.site }}
+          </div>
+          <div class="col-md-3">
+            {{ mobilisation_form.date_debut.label_tag }}
+            {{ mobilisation_form.date_debut }}
+          </div>
+          <div class="col-md-3">
+            {{ mobilisation_form.date_fin.label_tag }}
+            {{ mobilisation_form.date_fin }}
+          </div>
         </div>
-    {% endif %}
+      </div>
+    </div>
 
-    <form method="post"  action="{% url 'mobiliser_equipes' projet.id %}" class="needs-validation" novalidate>
-        {% csrf_token %}
-
-        <fieldset class="border p-4 mb-4 rounded-3 shadow-lg bg-light">
-            <legend class="float-none w-auto px-3 fs-5 text-primary fw-bold">Détails de l’Activité</legend>
-
-            {# Utilisation des formulaires Django pour les champs de l'activité #}
-            <div class="mb-3">
-                {{ activite_form.nom.label_tag }}
-                {{ activite_form.nom}} 
-                <div class="invalid-feedback">Veuillez fournir un nom pour l'activité.</div>
-            </div>
-
-            <div class="mb-3">
-                {{ activite_form.description.label_tag }}
-                {{ activite_form.description}}
-                <div class="invalid-feedback">Veuillez fournir une description.</div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    {{ activite_form.date_debut.label_tag }}
-                    {{ activite_form.date_debut }}
-                    <div class="invalid-feedback">Veuillez choisir une date de début.</div>
-                </div>
-                <div class="col-md-6 mb-3">
-                    {{ activite_form.date_fin.label_tag }}
-                    {{ activite_form.date_fin }}
-                    <div class="invalid-feedback">Veuillez choisir une date de fin.</div>
-                </div>
-            </div>
-            {# Afficher les erreurs non-liées aux champs spécifiques si elles existent #}
-            {% if activite_form.non_field_errors %}
-                <div class="alert alert-danger mt-3">
-                    {% for error in activite_form.non_field_errors %}
-                        {{ error }}
-                    {% endfor %}
-                </div>
-            {% endif %}
-        </fieldset>
-
-        <fieldset class="border p-4 mb-4 rounded-3 shadow-lg bg-light">
-            <legend class="float-none w-auto px-3 fs-5 text-primary fw-bold">Détails de la Mobilisation</legend>
-            <div class="mb-3">
-                {{ mobilisation_form.site.label_tag }}
-                {{ mobilisation_form.site  }}
-                <div class="invalid-feedback">Veuillez spécifier un site.</div>
-            </div>
-            {# Si les dates de mobilisation sont distinctes de l'activité, vous pouvez les remettre ici #}
-            {# Pour l'instant, la vue les récupère de l'activité #}
-            {% if mobilisation_form.non_field_errors %}
-                <div class="alert alert-danger mt-3">
-                    {% for error in mobilisation_form.non_field_errors %}
-                        {{ error }}
-                    {% endfor %}
-                </div>
-            {% endif %}
-        </fieldset>
-
-        <fieldset class="border p-4 mb-4 rounded-3 shadow-lg bg-light" id="livrables-section">
-            <legend class="float-none w-auto px-3 fs-5 text-primary fw-bold">Livrables de l'Activité</legend>
-            {{ livrable_formset.management_form }} {# NE PAS OUBLIER CETTE LIGNE ESSENTIELLE POUR LES FORMSETS #}
-            <div id="livrable-form-container">
-                {% for form in livrable_formset %}
-                    <div class="livrable-form border p-3 mb-3 rounded bg-white shadow-sm">
-                        {# Cela permet de suivre les formulaires existants lors de la soumission #}
-                        {% if form.instance.pk %}{{ form.id }}{% endif %}
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="mb-0 text-secondary">Livrable #{{ forloop.counter }}</h6>
-                            {% if livrable_formset.can_delete %}
-                                <div class="form-check form-switch">
-                                    {{ form.DELETE }}
-                                    <label class="form-check-label" for="{{ form.DELETE.id_for_label }}">Supprimer</label>
-                                </div>
-                            {% endif %}
-                        </div>
-                        {{ form.nom_livrable.label_tag }}
-                        {{ form.nom_livrable }}
-                        {% for error in form.non_field_errors %}
-                            <div class="alert alert-danger mt-2">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                {% endfor %}
-            </div>
-            <button type="button" class="btn btn-outline-primary mt-3" id="add-livrable-btn">
-                <i class="bi bi-plus-circle me-2"></i> Ajouter un livrable
-            </button>
-        </fieldset>
-
-        <fieldset class="border p-4 mb-4 rounded-3 shadow-lg bg-light">
-            <legend class="float-none w-auto px-3 fs-5 text-primary fw-bold">Équipes Affectées au Projet</legend>
-
-            {% if equipes_pre_affectees %}
-                <p class="text-muted mb-3">Cochez les équipes que vous souhaitez mobiliser pour cette activité.</p>
-                <div class="row g-2">
-                    {% for equipe in equipes_pre_affectees %}
-                        <div class="col-md-4 col-sm-6">
-                            <div class="form-check p-3 border rounded-3 bg-white shadow-sm d-flex align-items-center">
-                                <input class="form-check-input mt-0 me-2" type="checkbox" name="equipes_selectionnees" value="{{ equipe.id }}" id="equipe_{{ equipe.id }}">
-                                <label class="form-check-label flex-grow-1" for="equipe_{{ equipe.id }}">
-                                    <strong class="text-dark">{{ equipe.nom }}</strong>
-                                </label>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <p class="alert alert-info">Aucune équipe n'est affectée à ce projet. Veuillez affecter des équipes avant de pouvoir les mobiliser.</p>
-            {% endif %}
-        </fieldset>
-
-        <div class="d-flex justify-content-between mt-4">
-            <button type="submit" class="btn btn-success btn-lg px-5">
-                <i class="bi bi-lightning-charge-fill me-2"></i> Mobiliser
-            </button>
-            <a href="{% url 'resume_mobilisation' %}" class="btn btn-secondary btn-lg px-5">
-                <i class="bi bi-x-circle-fill me-2"></i> Annuler
-            </a>
-        </div>
-    </form>
+    <!-- Bouton d'envoi -->
+    <div class="d-flex justify-content-between">
+      <a href="{% url 'organiser_mobilisation' %}" class="btn btn-secondary">Annuler</a>
+      <button type="submit" class="btn btn-success">Enregistrer la mobilisation</button>
+    </div>
+  </form>
 </div>
-
-<script>
-    (function () {
-        'use strict';
-        var forms = document.querySelectorAll('.needs-validation');
-
-        Array.prototype.slice.call(forms).forEach(function (form) {
-            form.addEventListener('submit', function (event) {
-                // Validation des équipes sélectionnées
-                const selectedTeams = document.querySelectorAll('input[name="equipes_selectionnees"]:checked');
-                if (selectedTeams.length === 0) {
-                    alert("Veuillez sélectionner au moins une équipe à mobiliser.");
-                    event.preventDefault(); // Empêche l'envoi du formulaire
-                    event.stopPropagation(); // Arrête la propagation de l'événement
-                }
-
-                // Validation native du navigateur (champs 'required')
-                if (!form.checkValidity()) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                }
-
-                form.classList.add('was-validated'); // Ajoute la classe pour afficher les messages d'erreur de validation
-            }, false);
-        });
-    })();
-
-    // Script pour ajouter dynamiquement des livrables (Formset)
-    document.addEventListener('DOMContentLoaded', function() {
-        const addLivrableBtn = document.getElementById('add-livrable-btn');
-        const livrableFormContainer = document.getElementById('livrable-form-container');
-        const totalFormsInput = document.querySelector('#id_livrable-TOTAL_FORMS'); // Récupère l'input hidden TOTAL_FORMS
-
-        addLivrableBtn.addEventListener('click', function() {
-            // Cloner le premier formulaire existant pour réutiliser sa structure
-            const firstForm = livrableFormContainer.querySelector('.livrable-form');
-            if (!firstForm) {
-                console.error("Aucun formulaire de livrable initial trouvé pour le clonage.");
-                return;
-            }
-            const newForm = firstForm.cloneNode(true); // Clonage profond
-
-            const currentFormsCount = parseInt(totalFormsInput.value);
-            const newFormIndex = currentFormsCount;
-
-            // Mettre à jour les attributs (id, name, for) pour le nouveau formulaire
-            // pour qu'ils correspondent à la convention de nommage du formset (prefix-index-field_name)
-            newForm.innerHTML = newForm.innerHTML.replace(/livrable-(\d+)-/g, `livrable-${newFormIndex}-`);
-            newForm.querySelectorAll('input, textarea, select, label').forEach(element => {
-                if (element.id) {
-                    element.id = element.id.replace(/livrable-(\d+)-/g, `livrable-${newFormIndex}-`);
-                }
-                if (element.name) {
-                    element.name = element.name.replace(/livrable-(\d+)-/g, `livrable-${newFormIndex}-`);
-                }
-                if (element.htmlFor) { // Pour les balises <label>
-                    element.htmlFor = element.htmlFor.replace(/livrable-(\d+)-/g, `livrable-${newFormIndex}-`);
-                }
-                // Réinitialiser les valeurs pour le nouveau formulaire
-                if (element.tagName === 'INPUT' && element.type !== 'hidden' && element.type !== 'checkbox') {
-                    element.value = '';
-                }
-                if (element.tagName === 'INPUT' && element.type === 'checkbox') {
-                    element.checked = false; // Décocher la case "Supprimer"
-                }
-            });
-            // Mettre à jour le titre du formulaire (ex: "Livrable #2")
-            const formTitle = newForm.querySelector('h6');
-            if (formTitle) {
-                formTitle.textContent = `Livrable #${newFormIndex + 1}`;
-            }
-
-            livrableFormContainer.appendChild(newForm); // Ajoute le nouveau formulaire au conteneur
-            totalFormsInput.value = newFormIndex + 1; // Incrémente le nombre total de formulaires
-        });
-    });
-</script>
 {% endblock %}
