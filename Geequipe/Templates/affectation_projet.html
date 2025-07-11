@@ -65,9 +65,9 @@
                                     <td>{{ a.equipe.nom }}</td>
                                     <td>{{ a.projet.nom }}</td>
                                     <td>
-                                        {% if a.projet.statut == 'en_cours' %}
+                                        {% if a.projet.statut == 'en cours' %}
                                             <span class="badge bg-success">En cours</span>
-                                        {% elif a.projet.statut == 'termine' %}
+                                        {% elif a.projet.statut == 'terminé' %}
                                             <span class="badge bg-danger">Terminé</span>
                                         {% else %}
                                             <span class="badge bg-secondary">{{ a.projet.get_statut_display }}</span>
@@ -75,12 +75,12 @@
                                     </td>
                                     <td>{{ a.date_affectation|date:"d/m/Y" }}</td>
                                     <td>
-                                        {% if a.projet.statut == 'en_cours' %}
+                                        {% if a.projet.statut == 'en cours' %}
                                             <form method="post" action="{% url 'supprimer_affectation' a.id %}" style="display:inline;">
                                                 {% csrf_token %}
                                                 <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Confirmer l\'annulation de l\'affectation ?')">🗑️ Annuler l'affectation</button>
                                             </form>
-                                            <a href="#" class="btn btn-sm btn-info ms-2">📊 Allouer les tâches</a>
+                                            <a href="{% url 'assign_tasks_to_team' a.id %}" class="btn btn-sm btn-info ms-2">📊 Allouer les tâches</a>
                                         {% else %}
                                             <span class="text-muted">Non modifiable</span>
                                         {% endif %}

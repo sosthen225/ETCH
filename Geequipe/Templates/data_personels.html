@@ -15,8 +15,8 @@
                 <th>Email</th>
                 <th>Téléphone</th>
                 <th>Nationalité</th>
-                <th>Statut</th>
-                <th> changer le statut</th>
+                
+                <th>Statut de l'agent</th>
                 <th>Résidence</th>
                 <th>Pays d'affectation</th>
                 <th>Compétences</th>
@@ -32,7 +32,7 @@
                 <td>{{ agent.email }}</td>
                 <td>{{ agent.telephone }}</td>
                 <td>{{ agent.nationalite }}</td>
-                <td>{{ agent.get_statut_display }}</td>
+                
 
             <td>
   <form method="POST" action="{% url 'changer_statut_agent' agent.id %}">

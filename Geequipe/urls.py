@@ -1,6 +1,6 @@
 from django.urls import include, path, reverse_lazy
 from ETCH import settings
-from Geequipe.views import affecter_equipe, ajouter_projet, ajouter_taches, changer_statut_activite, changer_statut_personnel, creer_equipe, creer_mobilisation, enregistrer_agent, equipes_disponibles, exporter_projet_excel,  index, liste_activites, liste_equipes, liste_mobilisations, login_page, logout_view, mobiliser_equipes, modifier_agent, modifier_equipe, modifier_projet, modifier_statut_projet, organiser_mobilisation, projets_disponibles, resume_mobilisation, search_results, supprimer_affectation, supprimer_agent, supprimer_equipe, supprimer_projet, tabpersonels, tabprojet, voir_certificats
+from Geequipe.views import affecter_equipe, ajouter_projet, ajouter_taches, assign_tasks_to_team, changer_statut_activite, changer_statut_personnel, creer_equipe, creer_mobilisation, enregistrer_agent, equipes_disponibles, exporter_projet_excel,  index, liste_activites, liste_equipes, liste_mobilisations, login_page, logout_view, mobiliser_equipes, modifier_agent, modifier_equipe, modifier_projet, modifier_statut_projet, organiser_mobilisation, projets_disponibles, resume_mobilisation, search_results, supprimer_activite, supprimer_affectation, supprimer_agent, supprimer_equipe, supprimer_projet, tabpersonels, tabprojet, voir_certificats, voir_taches
 from django.contrib.auth import views as auth_views
 from django.conf.urls.static import static
 
@@ -17,7 +17,7 @@ urlpatterns = [
     path('modifier_projet/<int:id>/', modifier_projet, name='modifier_projet'),
     path('supprimer_projet/<int:id>/', supprimer_projet, name='supprimer_projet'),
     path('projets/<int:projet_id>/',ajouter_taches, name='ajouter_taches'),
-
+    path('activites/<int:activite_id>/supprimer/', supprimer_activite, name='supprimer_activite'),
    
 
     #path('projets/<int:projet_id>/json/', projet_json, name='projet_json'),
@@ -49,7 +49,7 @@ urlpatterns = [
     path('activites/', liste_activites, name='liste_activites'),
     path('activites/<int:activite_id>/changer-statut/',changer_statut_activite, name='changer_statut_activite'),
     #path('affectation/allouer-taches/<int:projet_id>/<int:equipe_id>/', allouer_taches, name='allouer_taches'),
-
+     path('projet/<int:projet_id>/taches/', voir_taches, name='voir_taches'),
 
 
 
@@ -58,7 +58,48 @@ urlpatterns = [
     path('affecter_equipe/', affecter_equipe, name='affecter_equipe'),
     path('supprimer-affectation/<int:affectation_id>/', supprimer_affectation, name='supprimer_affectation'),
 
+    path('change-password/', auth_views.PasswordChangeView.as_view(template_name='registration/password_change_form.html'), name='password_change'),
+    path('change-password/done/', auth_views.PasswordChangeDoneView.as_view(template_name='registration/password_change_done.html'), name='password_change_done'),
+   
+
+
+    path('affectation/<int:affectation_id>/assigner-taches/', assign_tasks_to_team, name='assign_tasks_to_team'),
 
     path('search/', search_results, name='search_results'),
+
+
+
+   
+
+
+  
+    
+    # Gestion du mot de passe oublié
+    path('password-reset/', 
+         auth_views.PasswordResetView.as_view(
+             template_name='registration/password_reset_form.html',
+             email_template_name='registration/password_reset_email.html',
+             subject_template_name='registration/password_reset_subject.txt'
+         ),
+         name='password_reset'),
+
+    path('password-reset/done/', 
+         auth_views.PasswordResetDoneView.as_view(
+             template_name='registration/password_reset_done.html'
+         ),
+         name='password_reset_done'),
+
+    path('reset/<uidb64>/<token>/', 
+         auth_views.PasswordResetConfirmView.as_view(
+             template_name='registration/password_reset_confirm.html'
+         ),
+         name='password_reset_confirm'),
+
+    path('reset/done/', 
+         auth_views.PasswordResetCompleteView.as_view(
+             template_name='registration/password_reset_complete.html'
+         ),
+         name='password_reset_complete'),
+
 
 ]

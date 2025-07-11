@@ -1,0 +1,62 @@
+<!-- taches_liste.html -->
+{% extends "index.html" %}
+{% block content %}
+
+<div class="container mt-4">
+  <h2 class="mb-4 text-center">Tâches du projet : {{ projet.nom }}</h2>
+
+  <div class="table-responsive">
+    <table class="table table-bordered table-striped table-hover align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>Nom de la tâche</th>
+          <th>Description</th>
+          <th>Date de début</th>
+          <th>Date de fin</th>
+          <th>Livrables</th>
+          <th>Statut</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tache in taches %}
+        <tr>
+          <td>{{ tache.nom }}</td>
+          <td>{{ tache.description|default:"—" }}</td>
+          <td>{{ tache.date_debut|date:"d/m/Y" }}</td>
+          <td>{{ tache.date_fin|date:"d/m/Y" }}</td>
+          <td>
+            <ul class="mb-0 pl-3">
+              {% for livrable in tache.livrables.all %}
+                <li>
+                  {{ livrable.nom }} - 
+                  {% if livrable.date_livraison %}
+                    {{ livrable.date_livraison|date:"d/m/Y" }}
+                  {% else %}
+                    <span class="text-muted">Aucun livrable n'a été enregistré</span>
+                  {% endif %}
+                </li>
+              {% empty %}
+                <li class="text-muted">Aucun livrable</li>
+              {% endfor %}
+            </ul>
+          </td>
+          <td>{{ tache.get_statut_display }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6" class="text-center text-danger">Aucune tâche trouvée.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="text-center mt-4">
+    <a href="{% url 'tabprojet' %}" class="btn btn-secondary btn-lg">
+      Retour
+    </a>
+  </div>
+
+</div>
+
+{% endblock %}

@@ -35,15 +35,21 @@
         <td>{{ projet.pays }}</td>
         <td>
   <select class="form-control statut-select" data-id="{{ projet.id }}">
-    <option value="en_cours" {% if projet.statut == 'en_cours' %}selected{% endif %}>En cours</option>
-    <option value="en_attente" {% if projet.statut == 'en_attente' %}selected{% endif %}>En attente</option>
-    <option value="termine" {% if projet.statut == 'termine' %}selected{% endif %}>Terminé</option>
+    <option value="en cours" {% if projet.statut == 'en cours' %}selected{% endif %}>En cours</option>
+    <option value="en attente" {% if projet.statut == 'en attente' %}selected{% endif %}>En attente</option>
+    <option value="terminé" {% if projet.statut == 'terminé' %}selected{% endif %}>Terminé</option>
+    <option value="suspendu" {% if projet.statut == 'suspendu' %}selected{% endif %}>Suspendu</option>
   </select>
 </td>
         <td>{{ projet.chef_projet.user.get_full_name }}</td>
         <td>{{ projet.client.nom }}</td>
         <td>
-          <a href="{% url 'ajouter_taches' projet.id %}" class="btn btn-info btn-sm mt-1">Ajouter des tâches</a>
+          <a href="{% url 'voir_taches' projet.id %}" class="btn btn-info btn-sm">Voir les tâches</a>
+           {% if projet.statut == 'terminé' %}
+    <a href="#" class="btn btn-secondary btn-sm mt-1" disabled>Ce projet est terminé</a>
+  {% else %}
+    <a href="{% url 'ajouter_taches' projet.id %}" class="btn btn-info btn-sm mt-1">Ajouter des tâches</a>
+  {% endif %}
           <a href="{% url 'exporter_projet_excel' projet.id %}" class="btn btn-success ">Exporter en Excel</a>
           <a href="{% url 'modifier_projet' projet.id %}" class="btn btn-warning btn-sm">Modifier</a>
           <form action="{% url 'supprimer_projet' projet.id %}" method="post" style="display:inline;">
@@ -105,9 +111,9 @@
           <div class="mb-3">
             <label>Statut</label>
             <select class="form-control" id="statut" required>
-              <option value="en_cours">En cours</option>
-              <option value="en_attente">En attente</option>
-              <option value="termine">Terminé</option>
+              <option value="en cours">En cours</option>
+              <option value="en attente">En attente</option>
+             
             </select>
           </div>
 

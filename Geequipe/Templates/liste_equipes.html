@@ -50,6 +50,8 @@
                     <a href="{% url 'modifier_equipe' equipe.id %}" class="btn btn-sm btn-warning mb-1">
                         Modifier
                     </a>
+
+                    
                     <form action="{% url 'supprimer_equipe' equipe_id=equipe.id %}" method="post" style="display:inline;">
     {% csrf_token %} 
     <button type="submit" class="btn btn-sm btn-danger mb-1" onclick="return confirm('Êtes-vous sûr de vouloir supprimer cette équipe ?');">

@@ -69,13 +69,15 @@ def login_page(request):
 
 
 
-
+from django.utils import timezone
+from dateutil.relativedelta import relativedelta
 
 def index(request):
 
      # --- Mettre à jour le statut des projets avant de les récupérer ---
     # Récupérer tous les projets en cours
-    projets_en_cours_a_verifier = Projet.objects.filter(statut='en_cours')
+    projets_en_cours_a_verifier = Projet.objects.filter(statut='en cours')
+    equipe=Equipe.objects.all()
 
     # Parcourir ces projets et mettre à jour ceux qui sont terminés
     # Il est plus efficace de faire une mise à jour en masse si possible, mais une boucle est plus claire pour la démonstration.
@@ -95,8 +97,8 @@ def index(request):
     total_teams = Equipe.objects.count()
     total_personnel = Personnel.objects.count()
     completed_projects = Projet.objects.filter(statut='terminé').count()
-    ongoing_projects = Projet.objects.filter(statut='en_cours').count()
-    projet_encours= Projet.objects.filter(statut='en_cours').order_by('-date_fin')[:10]
+    ongoing_projects = Projet.objects.filter(statut='en cours').count()
+    projet_encours= Projet.objects.filter(statut='en cours').order_by('-date_fin')[:10]
     completed_projects_list = Projet.objects.filter(statut='terminé').order_by('-date_fin')[:10] # Obtenir les 10 derniers projets terminés
 
     # Pour les notifications : Projets se terminant bientôt (par exemple, dans une semaine)
@@ -105,19 +107,24 @@ def index(request):
     upcoming_projects = Projet.objects.filter(
     date_fin__gt=today,
     date_fin__lte=one_month_from_now,
-    statut='en_cours'
+    statut='en cours'
 ).order_by('date_fin')
     
     #all_mobilisations = Mobilisation.objects.all().order_by('-date_debut')
     #planned_mobilisations = Mobilisation.objects.filter(statut__in=['planifié'] ).order_by('date_debut')
-    planned_activities =Activite.objects.filter(statut='planifiée' ,projet__statut='en_cours').order_by('-date_debut')
+    planned_activities =Activite.objects.filter(statut='planifiée' ,projet__statut='en cours').order_by('-date_debut')
 
 
     # # Pour les notifications : Certifications du personnel expirant bientôt (par exemple, dans les 30 jours)
-    # expiring_personnel = Personnel.objects.filter(
-    #     certification_expiry_date__gt=today,
-    #     certification_expiry_date__lte=one_month_from_now
-    # ).order_by('certification_expiry_date')
+    # Calcul des dates
+    today = timezone.now().date()
+    one_month_from_now = today + relativedelta(months=+1)
+
+# Récupération du personnel avec certificats expirant sous 1 mois
+    expiring_personnel = Personnel.objects.filter(
+    certificats__validite__gt=today,
+    certificats__validite__lte=one_month_from_now
+).prefetch_related('certificats').distinct().order_by('certificats__validite')
 
 
     context = {
@@ -128,9 +135,11 @@ def index(request):
         'completed_projects_list': completed_projects_list,
         'upcoming_projects': upcoming_projects,
         'projet_encours': projet_encours,
-        'planned_activities': planned_activities
+        'equipe':equipe,
+        'planned_activities': planned_activities,
+        
         #'planned_mobilisations':planned_mobilisations
-       # 'expiring_personnel': expiring_personnel,
+        'expiring_personnel': expiring_personnel,
     }
     return render(request, 'index.html',context)
 
@@ -168,6 +177,11 @@ def modifier_statut_projet(request, projet_id):
             projet = Projet.objects.get(id=projet_id)
             projet.statut = nouveau_statut
             projet.save()
+         # Si le projet est maintenant "terminé", mettre toutes les tâches à "terminée"
+            if nouveau_statut == 'terminé':
+
+                 projet.activites.update(statut='terminée')
+                 
             return JsonResponse({'success': True})
         except Projet.DoesNotExist:
             return JsonResponse({'success': False, 'message': 'Projet introuvable'})
@@ -568,7 +582,7 @@ def projets_disponibles(request):
     equipe_id = request.GET.get('equipe_id')
     if equipe_id:
         projet_ids = AffectationProjet.objects.filter(equipe_id=equipe_id).values_list('projet_id', flat=True)
-        projets = Projet.objects.filter(statut='en_cours').exclude(id__in=projet_ids).values('id', 'nom')
+        projets = Projet.objects.filter(statut='en cours').exclude(id__in=projet_ids).values('id', 'nom')
         return JsonResponse(list(projets), safe=False)
     return JsonResponse([], safe=False)
 
@@ -609,7 +623,7 @@ def supprimer_affectation(request, affectation_id):
     affectation = get_object_or_404(AffectationProjet, id=affectation_id)
 
     # Vérifie si le projet est encore en cours
-    if affectation.projet.statut != 'en_cours':
+    if affectation.projet.statut != 'en cours':
         messages.error(request, "Impossible de supprimer une affectation pour un projet terminé.")
         return redirect('affecter_equipe')
 
@@ -623,7 +637,7 @@ def supprimer_affectation(request, affectation_id):
 from datetime import date
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import Projet, Equipe, Membre, Effectuer, Activite
-from .forms import AffecterMembreTacheForm
+from .forms import AffecterMembreTacheForm, AssignTaskForm
 
 def affecter_membres_tache(request, projet_id, equipe_id):
     projet = get_object_or_404(Projet, id=projet_id)
@@ -659,56 +673,24 @@ def affecter_membres_tache(request, projet_id, equipe_id):
 
 
 
-# def allouer_taches(request, projet_id, equipe_id):
-#     projet = get_object_or_404(Projet, id=projet_id)
-#     equipe = get_object_or_404(Equipe, id=equipe_id)
-
-#     # Récupérer toutes les tâches associées à ce projet
-#     taches_du_projet = Activite.objects.filter(projet=projet)
-
-#     # Récupérer les membres de l'équipe
-#     membres_equipe = Membre.objects.filter(equipe=equipe)
-
-#     if not membres_equipe:
-#         messages.warning(request, f"L'équipe '{equipe.nom}' n'a aucun membre pour allouer les tâches.")
-#         return redirect('nom_de_votre_page_affectation') # Redirigez vers la page d'où vous venez
-
-#     if not taches_du_projet:
-#         messages.info(request, f"Le projet '{projet.nom}' n'a pas de tâches non allouées.")
-#         return redirect('nom_de_votre_page_affectation')
-
-#     # Logique d'allocation des tâches
-#     # C'est la partie la plus importante et elle dépendra de vos besoins :
-#     # - Répartition égale ?
-#     # - En fonction des compétences des membres ?
-#     # - Manuelle par une interface ?
-
-#     # Exemple simple : Répartir les tâches une par une aux membres de l'équipe
-#     # Vous devrez adapter cette logique pour la rendre plus intelligente
-#     index_membre = 0
-#     taches_allouees_count = 0
-#     for tache in taches_du_projet:
-#         if membres_equipe: # S'assurer qu'il y a des membres à qui allouer
-#             membre_a_allouer = membres_equipe[index_membre]
-#             tache.assigne_a = membre_a_allouer # Supposons un champ ForeignKey 'assigne_a' dans votre modèle Tache
-#             tache.est_allouee = True # Marquez la tâche comme allouée
-#             tache.save()
-#             taches_allouees_count += 1
-#             index_membre = (index_membre + 1) % len(membres_equipe) # Passer au membre suivant, ou revenir au début
-
-#     if taches_allouees_count > 0:
-#         messages.success(request, f"{taches_allouees_count} tâches du projet '{projet.nom}' ont été allouées aux membres de l'équipe '{equipe.nom}'.")
-#     else:
-#         messages.info(request, f"Aucune nouvelle tâche n'a été allouée pour le projet '{projet.nom}' et l'équipe '{equipe.nom}'.")
-
-#     return redirect('nom_de_votre_page_affectation') # Assurez-vous de remplacer par le nom de l'URL de votre page actuelle
-
 
 
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import Projet, Activite
 from .forms import ActiviteForm, LivrableInlineFormSet
 from django.forms import formset_factory
+
+# views.py
+from django.forms import inlineformset_factory
+
+# Définir le formset pour les livrables
+LivrableInlineFormSet = inlineformset_factory(
+    Activite,
+    Livrable,
+    fields=['nom_livrable'],
+    extra=1,
+    can_delete=True
+)
 
 def ajouter_taches(request, projet_id):
     projet = get_object_or_404(Projet, id=projet_id)
@@ -729,13 +711,10 @@ def ajouter_taches(request, projet_id):
                     continue
                 if form.has_changed():
                     activite = form.save(commit=False)
-                    
-                    # ✅ On affecte le projet avant de sauvegarder ou d'utiliser activite.projet
                     activite.projet = projet
                     activite.statut = "planifiée"
-                    activite.save()  # Maintenant, activite a bien un ID et un projet
-                    
-                    # ✅ Gestion des livrables
+                    activite.save()
+
                     livrable_formset = LivrableInlineFormSet(
                         request.POST,
                         instance=activite,
@@ -747,15 +726,24 @@ def ajouter_taches(request, projet_id):
                     else:
                         print("Erreur dans les livrables :", livrable_formset.errors)
 
-            return redirect("tabprojet")
+            return redirect("voir_taches", projet_id=projet.id)
+
     else:
         formset = TacheFormSet(prefix="taches")
+        # Génère des formsets vides pour les livrables
+        livrables_formsets = [
+            LivrableInlineFormSet(instance=Activite(), prefix=f"livrables-{i}")
+            for i in range(formset.total_form_count())
+        ]
 
     context = {
         "projet": projet,
         "formset": formset,
+        "livrables_formsets": livrables_formsets,  # <-- On passe ici les formsets
     }
     return render(request, "ajouter_taches.html", context)
+
+
 
 
 
@@ -764,56 +752,80 @@ from django.http import HttpResponse
 from .models import Projet, Activite, Livrable
 
 
+from django.http import HttpResponse
+from openpyxl import Workbook
+from .models import Projet, Activite, Livrable, Equipe, Effectuer
+
 def exporter_projet_excel(request, projet_id):
     projet = Projet.objects.get(id=projet_id)
 
-    # Créer un classeur Excel
-    workbook = openpyxl.Workbook()
-
-    # Feuille principale du projet
+    # Créer un classeur et une seule feuille
+    workbook = Workbook()
     sheet = workbook.active
-    sheet.title = "Projet"
+    sheet.title = "Détails Projet"
+
+    # En-têtes
     sheet.append([
-        "Nom du projet", "Date de début", "Date de fin", "Statut"
-    ])
-    sheet.append([
-        projet.nom,
-        str(projet.date_debut),
-        str(projet.date_fin),
-        projet.statut
+        "Projet", "Date Début Projet", "Date Fin Projet", "",
+        "Tâche", "Description Tâche", "Date Début Tâche", "Date Fin Tâche", "Statut Tâche",
+        "Livrable", "Membre Assigné"
     ])
 
-    # Ajouter les tâches dans une autre feuille
-    sheet_taches = workbook.create_sheet("Tâches")
-    sheet_taches.append([
-        "ID Tâche", "Nom", "Description", "Date Début", "Date Fin", "Statut", "Tâche Précédente"
-    ])
+    # Charger les activités avec leurs livrables et membres affectés via Effectuer
+    activites = Activite.objects.filter(projet=projet).prefetch_related('livrables', 'personnels_affectes__membre')
 
-    for activite in Activite.objects.filter(projet=projet):
-        sheet_taches.append([
-            activite.id,
-            activite.nom,
-            activite.description,
-            str(activite.date_debut),
-            str(activite.date_fin),
-            activite.statut,
-            activite.tache_precedente.nom if activite.tache_precedente else ""
+    if not activites.exists():
+        sheet.append([
+            projet.nom,
+            str(projet.date_debut),
+            str(projet.date_fin),
+            projet.get_statut_display(),
+            "Aucune tâche trouvée",
+            "", "", "", "", "", ""
         ])
+    else:
+        for idx, activite in enumerate(activites):
+            # Récupère les membres assignés via Effectuer
+            membres_assignes = ", ".join(
+                effectuer.membre.personnel.prenoms + " " + effectuer.membre.personnel.nom
+                for effectuer in activite.personnels_affectes.all()
+            ) if activite.personnels_affectes.exists() else "Non assigné"
 
-        # Ajouter les livrables liés à la tâche dans leur propre feuille
-        sheet_livrables = workbook.create_sheet(f"Liv.{activite.id}")
-        sheet_livrables.append(["ID Livrable", "Nom"])
+            # Gestion des livrables
+            livrables = activite.livrables.all()
+            if livrables:
+                for livrable in livrables:
+                    sheet.append([
+                        projet.nom if idx == 0 else "",
+                        str(projet.date_debut) if idx == 0 else "",
+                        str(projet.date_fin) if idx == 0 else "",
+                        projet.get_statut_display() if idx == 0 else "",
+                        activite.nom,
+                        activite.description,
+                        str(activite.date_debut),
+                        str(activite.date_fin),
+                        activite.get_statut_display(),
+                        livrable.nom_livrable,
+                        membres_assignes
+                    ])
+            else:
+                sheet.append([
+                    projet.nom if idx == 0 else "",
+                    str(projet.date_debut) if idx == 0 else "",
+                    str(projet.date_fin) if idx == 0 else "",
+                    projet.get_statut_display() if idx == 0 else "",
+                    activite.nom,
+                    activite.description,
+                    str(activite.date_debut),
+                    str(activite.date_fin),
+                    activite.get_statut_display(),
+                    "Aucun",
+                    membres_assignes
+                ])
 
-        for livrable in Livrable.objects.filter(activite=activite):
-            sheet_livrables.append([
-                livrable.id,
-                livrable.nom_livrable,
-              
-            ])
-
-    # Réponse HTTP avec le fichier Excel
+    # Réponse HTTP
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    response['Content-Disposition'] = f'attachment; filename=Projet_{projet.nom}.xlsx'
+    response['Content-Disposition'] = f'attachment; filename=Projet_{projet.nom}_Resume.xlsx'
 
     workbook.save(response)
     return response
@@ -916,7 +928,7 @@ def organiser_mobilisation(request):
     
     # Récupérer les projets "en cours" ayant au moins une affectation liée
     projets = Projet.objects.filter(
-        statut='en_cours',
+        statut='en cours',
         equipe_affectee__isnull=False  # relation inversée de AffectationProjet
     ).distinct()  # éviter les doublons si plusieurs équipes
     print("Projet:", projets)
@@ -969,14 +981,19 @@ def liste_mobilisations(request):
 
 
 def liste_activites(request):
-    activites = Activite.objects.select_related('projet').prefetch_related('equipes_realisation', 'livrables').filter(projet__statut='en_cours').order_by('created_at')
-
+    activites = Activite.objects.select_related('projet').prefetch_related('equipes_realisation', 'personnels_affectes','livrables').filter(projet__statut='en cours').order_by('created_at')
+    tout=Activite.objects.select_related('projet').filter(projet__statut='en cours').order_by('created_at')
     return render(request, 'activites.html', {
         'activites': activites,
+        'tout': tout,
         'statut_choices': STATUT_ACTIVITIES_CHOICES,
     })
 
 
+def voir_taches(request, projet_id):
+    projet = get_object_or_404(Projet, id=projet_id)
+    taches = Activite.objects.filter(projet=projet).prefetch_related('livrables')
+    return render(request, 'taches_liste.html', {'projet': projet, 'taches': taches})
 
 
 def changer_statut_activite(request, activite_id):
@@ -995,6 +1012,15 @@ def changer_statut_activite(request, activite_id):
 
 
 
+
+
+
+def supprimer_activite(request, activite_id):
+    if request.method == 'POST':
+        activite = get_object_or_404(Activite, id=activite_id)
+        activite.delete()
+        return JsonResponse({'message': 'Tâche supprimée avec succès'})
+    return JsonResponse({'error': 'Méthode non autorisée'}, status=405)
 
 
 
@@ -1091,6 +1117,77 @@ def search_results(request):
     return render(request, 'recherche_sur_lesite.html', {'query': query, 'results': results})
 
 
+
+
+
+
+
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth import update_session_auth_hash
+def change_password(request):
+    if request.method == 'POST':
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            update_session_auth_hash(request, user)  # Garde l'utilisateur connecté
+            messages.success(request, "Votre mot de passe a été modifié avec succès.")
+            return redirect('password_change_done')
+        else:
+            messages.error(request, "Veuillez corriger les erreurs ci-dessous.")
+    else:
+        form = PasswordChangeForm(request.user)
+
+    return render(request, 'registration/password_change_form.html', {'form': form})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages
+from .models import  Activite, Membre
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages
+from .models import AffectationProjet, Activite, Membre, Effectuer
+
+def assign_tasks_to_team(request, affectation_id):
+    affectation = get_object_or_404(AffectationProjet, id=affectation_id)
+    equipe = affectation.equipe
+    projet = affectation.projet
+
+    # Récupère les membres de l'équipe (sauf les chauffeurs)
+    membres = equipe.membres.exclude(role='chauffeur')
+
+    # Récupère les activités liées au projet
+    activites = Activite.objects.filter(projet=projet)
+
+    if request.method == 'POST':
+        for activite in activites:
+            membre_ids = request.POST.getlist(f'tache_{activite.id}')
+            for membre_id in membre_ids:
+                # ✅ Création via le modèle intermédiaire Effectuer
+                Effectuer.objects.create(
+                    activite=activite,
+                    membre_id=membre_id
+                )
+        messages.success(request, "Les tâches ont été correctement affectées.")
+        return redirect('liste_activites')
+
+    return render(request, 'assign_task.html', {
+        'affectation': affectation,
+        'membres': membres,
+        'activites': activites,
+    })
 
 
 def logout_view(request):

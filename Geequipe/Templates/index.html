@@ -119,7 +119,7 @@
                  <li>
                    <a href="{% url 'liste_activites' %}">
                   <i class="fas fa-list"></i>
-                 <span>Voir les tâches</span>
+                 <span>Voir les tâches (Allouées)</span>
                      </a>
                   </li>
 
@@ -273,10 +273,11 @@
                       </li>
                       <li>
                         <div class="dropdown-divider"></div>
-
+                        <a class="dropdown-item" href="{% url 'password_change' %}">Changer de mot de passe</a>
                         <a class="dropdown-item" href="{% url 'logout' %}"
                           >Se déconnecter</a
                         >
+                        
                       </li>
                     </div>
                   </ul>
@@ -523,30 +524,32 @@
 
                       
 
-                      {% for personnel in expiring_personnel %}
-                      <li class="agenda-item">
-                        <div class="agenda-time">
-                          <i class="far fa-bell icon-mid text-danger"></i>
-                        </div>
-                        <div class="agenda-events">
-                          <div class="agenda-event">
-                            <p class="h6">
-                              Certification: {{ personnel.certification_name }}
-                              <span class="text-danger fw-bold">expire bientôt pour {{ personnel.nom }} !</span>
-                            </p>
-                            <small class="text-muted"
-                              >Date d'expiration: {{ personnel.certification_expiry_date|date:"d/m/Y" }}</small
-                            >
-                          </div>
-                        </div>
-                      </li>
-                      {% empty %}
-                        {% if not upcoming_projects %} {# Avoid duplicating "no notifications" message #}
-                          <li class="agenda-item">
-                            <p class="text-muted">Aucune certification de personnel n'expire bientôt.</p>
-                          </li>
-                        {% endif %}
-                      {% endfor %}
+{% for personnel in expiring_personnel %}
+  {% for certificat in personnel.certificats.all %}
+    <li class="agenda-item">
+      <div class="agenda-time">
+        <i class="far fa-bell icon-mid text-danger"></i>
+      </div>
+      <div class="agenda-events">
+        <div class="agenda-event">
+          <p class="h6">
+            Certification : {{ certificat.libelle }}
+            <span class="text-danger fw-bold"> de {{ personnel.nom }}  {{ personnel.prenoms }} expire bientôt  !</span>
+          </p>
+          <small class="text-muted">
+            Date d'expiration : {{ certificat.validite|date:"d/m/Y" }}
+          </small>
+        </div>
+      </div>
+    </li>
+  {% endfor %}
+{% empty %}
+  {% if not upcoming_projects %}
+    <li class="agenda-item">
+      <p class="text-muted">Aucune certification de personnel n'expire bientôt.</p>
+    </li>
+  {% endif %}
+{% endfor %}
                     </ul>
                   </div>
                 </div>
@@ -581,7 +584,13 @@
                             <th scope="row">{{ projet.nom }}</th>
                             <td class="text-end">{{ projet.date_fin|date:"d/m/Y" }}</td>
                             <td>{{ projet.client }}</td>
-                            <td>{{ projet.equipes }}</td>
+                           <td>
+                          {% for equipe in projet.equipes.all %}
+                                      {{ equipe.nom }}<br>
+                                           {% empty %}
+                                       <em>Aucune équipe</em>
+                                        {% endfor %}
+                            </td>
                             <td class="text-center">
                               <span class="badge badge-success">terminé</span>
                             </td>
@@ -868,9 +877,11 @@ document.addEventListener('DOMContentLoaded', function () {
         notificationCount.textContent = notifications.length;
         notificationCountTitle.textContent = notifications.length;
         notificationList.innerHTML = '';
-
         if (notifications.length === 0) {
-            notificationList.innerHTML = '<div class="notif-center"><p class="text-center text-muted m-3">Aucune nouvelle notification.</p></div>';
+            notificationList.innerHTML = `
+                <div class="notif-center">
+                    <p class="text-center text-muted m-3">Aucune notification.</p>
+                </div>`;
             return;
         }
 
@@ -882,7 +893,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                     <div class="notif-content">
                         <span class="block">${notif.message}</span>
-                        <span class="time">Bientôt</span>
+                        <span class="time">${notif.when}</span>
                     </div>
                 </a>`;
             notificationList.innerHTML += notifItem;
@@ -891,40 +902,46 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function checkNotifications() {
         let notifications = [];
+
+        // Dates pour comparaison
         const today = new Date();
         const oneMonthFromNow = new Date(today);
         oneMonthFromNow.setMonth(today.getMonth() + 1);
 
-        // Projets à venir
+        // Projets terminant bientôt
         {% for projet in upcoming_projects %}
-            const projectEndDate = new Date("{{ projet.date_fin|date:'Y-m-d' }}");
-            if (projectEndDate > today && projectEndDate <= oneMonthFromNow) {
+            const projectDate = new Date("{{ projet.date_fin|date:'Y-m-d' }}");
+            if (projectDate > today && projectDate <= oneMonthFromNow) {
                 notifications.push({
                     type: "project",
-                    message: "Le projet '{{ projet.nom }}' se termine le {{ projet.date_fin|date:'d/m/Y' }} !",
-                    icon: "fas fa-clock",
-                    color: "notif-warning"
+                    message: "Le projet '{{ projet.nom }}' se termine le {{ projet.date_fin|date:'d/m/Y' }}.",
+                    icon: "fas fa-folder",
+                    color: "notif-warning",
+                    when: "Bientôt"
                 });
             }
         {% endfor %}
 
-        // Certifications expirantes
+        // Certifications expirant bientôt
         {% for person in expiring_personnel %}
-            const certExpiryDate = new Date("{{ person.certification_expiry_date|date:'Y-m-d' }}");
-            if (certExpiryDate > today && certExpiryDate <= oneMonthFromNow) {
-                notifications.push({
-                    type: "certification",
-                    message: "La certification '{{ person.certification_name }}' de {{ person.nom }} expire le {{ person.certification_expiry_date|date:'d/m/Y' }} !",
-                    icon: "fas fa-certificate",
-                    color: "notif-danger"
-                });
-            }
+            {% for certificat in person.certificats.all %}
+                const certDate = new Date("{{ certificat.validite|date:'Y-m-d' }}");
+                if (certDate > today && certDate <= oneMonthFromNow) {
+                    notifications.push({
+                        type: "certification",
+                        message: "La certification '{{ certificat.libelle }}' de {{ person.nom }} {{ person.prenoms }} expire le {{ certificat.validite|date:'d/m/Y' }}.",
+                        icon: "fas fa-certificate",
+                        color: "notif-danger",
+                        when: "Bientôt"
+                    });
+                }
+            {% endfor %}
         {% endfor %}
 
         updateNotificationsUI(notifications);
     }
 
-    checkNotifications();
+    checkNotifications(); // Appel initial
 });
 </script>
 

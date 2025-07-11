@@ -142,6 +142,16 @@ class Projet(models.Model):
         raise ValidationError("La date de fin ne peut pas être antérieure à la date de début.")
 
 
+    def save(self, *args, **kwargs):
+        statut_initial = None
+        if self.pk:
+            statut_initial = Projet.objects.get(pk=self.pk).statut
+
+        super().save(*args, **kwargs)
+
+        # Mise à jour automatique des tâches si le projet devient "terminé"
+        if self.statut == 'terminé' and statut_initial != 'terminé':
+            self.activites.update(statut='terminée')
     def __str__(self):
         return self.nom
 
@@ -216,7 +226,7 @@ class Activite(models.Model):
 class Effectuer(models.Model):
     membre = models.ForeignKey('Membre', on_delete=models.CASCADE, related_name='activites_effectuees')
     activite = models.ForeignKey('Activite', on_delete=models.CASCADE, related_name='personnels_affectes')
-    date_affecter = models.DateField()
+    date_affecter = models.DateField(auto_now=True)
 
     def __str__(self):
         return f"{self.membre} affecté à {self.activite}"

@@ -1,0 +1,44 @@
+{% extends "index.html" %}
+{% block title %}Affecter les tâches aux membres{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h3>Affecter les tâches - Projet : {{ affectation.projet.nom }} | Équipe : {{ affectation.equipe.nom }}</h3>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Tâche</th>
+                        <th>Description</th>
+                        <th>Membres à affecter</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for activite in activites %}
+                    <tr>
+                        <td>{{ activite.nom }}</td>
+                        <td>{{ activite.description|default:"-" }}</td>
+                        <td>
+                            <select multiple name="tache_{{ activite.id }}" class="form-control">
+                                {% for membre in membres %}
+                                <option value="{{ membre.id }}">{{ membre.personnel.nom }} {{ membre.personnel.prenoms}}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="text-center">Aucune tâche trouvée pour ce projet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <button type="submit" class="btn btn-success">Affecter les tâches</button>
+        <a href="{% url 'affecter_equipe' %}" class="btn btn-secondary">Retour</a>
+    </form>
+</div>
+{% endblock %}

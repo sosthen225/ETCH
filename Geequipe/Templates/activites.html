@@ -2,24 +2,26 @@
 {% load static %}
 
 {% block content %}
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css ">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js "></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js "></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js "></script>
 
 <div class="container mt-4">
-    <h3 class="text-center mb-4">Liste des Tâches des projets en cours</h3>
+    <h3 class="text-center mb-4">Liste des tâches des projets en cours</h3>
 
     <table id="activitesTable" class="table table-bordered table-striped">
         <thead class="table-dark">
             <tr>
-                <th>Activité</th>
+                <th>Taches</th>
                 <th>Livrables</th>
-                <th>Equipes</th>
+                <th>Equipes affectées</th>
+                <th>Membres affectées</th>
                 <th>Date de debut</th>
                 <th>Projet</th>
                 <th>chef de projet</th>
-                <th>Statut</th>
+                <th>Statut de la tache</th>
+                <th>Actions</th> <!-- Nouvelle colonne -->
             </tr>
         </thead>
         <tbody>
@@ -27,21 +29,31 @@
             <tr data-id="{{ activite.id }}">
                 <td>{{ activite.nom }}</td>
                 <td>
-                <ul>
-                  {% for livrable in activite.livrables.all %}
-                <li>{{ livrable.nom_livrable }}</li>
-                 {% empty %}
-                    <li>Aucun livrable</li>
-                  {% endfor %}
+                    <ul>
+                        {% for livrable in activite.livrables.all %}
+                            <li>{{ livrable.nom_livrable }}</li>
+                        {% empty %}
+                            <li>Aucun livrable</li>
+                        {% endfor %}
+                    </ul>
+                </td>
+                <td>
+                 <ul> 
+                      {% for realisation in activite.equipes_realisation.all %}
+                        <span>{{ realisation.equipe.nom }}</span><br>
+                    {% empty %}
+                        <em>Non attribuée</em>
+                    {% endfor %}
                 </ul>
                 </td>
-
                 <td>
-                {% for realisation in activite.equipes_realisation.all %}
-                    <span >{{ realisation.equipe.nom }}</span><br>
-                {% empty %}
-                    <em>Non attribuée</em>
-                {% endfor %}
+                
+                    {% for effectuer in activite.personnels_affectes.select_related %}
+                        <li>{{ effectuer.membre.personnel.nom|default:"Inconnu" }}<br>{{effectuer.membre.personnel.prenoms}}</li>
+                    {% empty %}
+                        <li>Toute l'equipe</li>
+                    {% endfor %}
+                
             </td>
                 <td>{{ activite.date_debut }}</td>
                 <td>{{ activite.projet.nom }}</td>
@@ -52,6 +64,10 @@
                             <option value="{{ key }}" {% if activite.statut == key %}selected{% endif %}>{{ label }}</option>
                         {% endfor %}
                     </select>
+                </td>
+                
+                <td>
+                    <button class="btn btn-danger btn-sm delete-btn" data-id="{{ activite.id }}">Supprimer</button>
                 </td>
             </tr>
             {% endfor %}
@@ -84,6 +100,31 @@
                     alert('Erreur : ' + xhr.responseJSON.message);
                 }
             });
+        });
+
+        // Gérer suppression de la tâche
+        $('.delete-btn').on('click', function () {
+            const button = $(this);
+            const activiteId = button.data('id');
+            const csrfToken = '{{ csrf_token }}';
+            const row = button.closest('tr');
+
+            if (confirm("Êtes-vous sûr de vouloir supprimer cette tâche ?")) {
+                $.ajax({
+                    url: `/activites/${activiteId}/supprimer/`,
+                    method: 'POST',
+                    data: {
+                        csrfmiddlewaretoken: csrfToken
+                    },
+                    success: function (response) {
+                        row.remove(); // Supprime la ligne du tableau
+                        console.log(response.message);
+                    },
+                    error: function (xhr) {
+                        alert('Erreur : ' + xhr.responseJSON.message);
+                    }
+                });
+            }
         });
     });
 </script>

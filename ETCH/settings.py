@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'Geequipe',
+    'django_seed',
 ]
 
 MIDDLEWARE = [
@@ -153,3 +154,12 @@ TIME_ZONE = 'Africa/Abidjan'
 # LANGUAGE_CODE et USE_I18N sont aussi utiles pour l'internationalisation
 LANGUAGE_CODE = 'fr-fr' # Langue par défaut de votre site
 USE_I18N = True # Active le système de traduction de Django
+
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'gsosthen2@gmail.com'
+EMAIL_HOST_PASSWORD = 'mot-de-passe-app-gmail'
+DEFAULT_FROM_EMAIL = 'Geequipe ETECHNOLOGIE Afrique <gsosthen2@gmail.com>'

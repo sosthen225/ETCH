@@ -255,7 +255,7 @@ class AffectationProjetForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.fields['projet'].queryset = Projet.objects.filter(statut='en_cours')
+        self.fields['projet'].queryset = Projet.objects.filter(statut='en cours')
 
         # Par défaut, aucune restriction sur les équipes
         self.fields['equipe'].queryset = Equipe.objects.all()
@@ -393,3 +393,15 @@ class RealiserForm(forms.ModelForm):
         if equipes_choices:
             self.fields['equipe'].queryset = Equipe.objects.filter(id__in=equipes_choices)
             # Ou simplement : self.fields['equipe'].queryset = equipes_choices
+
+
+
+class AssignTaskForm(forms.Form):
+    activite = forms.ModelChoiceField(queryset=Activite.objects.all(), label="Sélectionner une activité")
+    membres = forms.ModelMultipleChoiceField(queryset=Membre.objects.all(), widget=forms.CheckboxSelectMultiple, label="Membres à assigner")
+
+    def __init__(self, *args, **kwargs):
+        equipe = kwargs.pop('equipe', None)
+        super().__init__(*args, **kwargs)
+        if equipe:
+            self.fields['membres'].queryset = equipe.membres.all()
