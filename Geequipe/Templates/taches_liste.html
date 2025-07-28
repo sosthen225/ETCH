@@ -15,6 +15,7 @@
           <th>Date de fin</th>
           <th>Livrables</th>
           <th>Statut</th>
+          <th>Actions</th> <!-- Nouvelle colonne -->
         </tr>
       </thead>
       <tbody>
@@ -41,10 +42,18 @@
             </ul>
           </td>
           <td>{{ tache.get_statut_display }}</td>
+          
+          <!-- Colonne d'actions -->
+          <td class="text-center">
+            <form action="{% url 'supprimer_tache' tache.id %}" method="post" onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette tâche ?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger btn-sm">Supprimer</button>
+            </form>
+          </td>
         </tr>
         {% empty %}
         <tr>
-          <td colspan="6" class="text-center text-danger">Aucune tâche trouvée.</td>
+          <td colspan="7" class="text-center text-danger">Aucune tâche trouvée.</td>
         </tr>
         {% endfor %}
       </tbody>

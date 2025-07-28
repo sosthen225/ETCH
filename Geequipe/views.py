@@ -112,7 +112,7 @@ def index(request):
     
     #all_mobilisations = Mobilisation.objects.all().order_by('-date_debut')
     #planned_mobilisations = Mobilisation.objects.filter(statut__in=['planifié'] ).order_by('date_debut')
-    planned_activities =Activite.objects.filter(statut='planifiée' ,projet__statut='en cours').order_by('-date_debut')
+    planned_activities =Activite.objects.filter(statut='planifiée' ,projet__statut='en cours').order_by('date_debut')[:10]
 
 
     # # Pour les notifications : Certifications du personnel expirant bientôt (par exemple, dans les 30 jours)
@@ -1193,3 +1193,43 @@ def assign_tasks_to_team(request, affectation_id):
 def logout_view(request):
     return redirect('login')
     
+
+
+
+def get_personnels_by_role(request):
+    role = request.GET.get('role')
+
+    if not role:
+        return JsonResponse({'error': 'Rôle requis'}, status=400)
+
+    if role == "Chauffeur":
+        competence = Competence.objects.filter(libelle="Chauffeur").first()
+        personnels = Personnel.objects.filter(
+            statut__iexact="Actif",
+            competences_possedees__competence=competence
+        ).distinct()
+    else:
+        personnels = Personnel.objects.filter(statut__iexact="Actif")
+
+    data = [{'id': p.id, 'nom': f"{p.nom} {p.prenom}"} for p in personnels]
+    return JsonResponse(data, safe=False)
+
+
+
+
+def supprimer_tache(request, tache_id):
+    # Récupère la tâche ou affiche une erreur 404 si non trouvée
+    tache = get_object_or_404(Activite, id=tache_id)
+    projet_id = tache.projet.id
+    if request.method == "POST":
+        # Enregistre le nom avant la suppression pour le message
+        nom_tache = tache.nom
+        # Supprime la tâche
+        tache.delete()
+        # Message de confirmation
+        messages.success(request, f"La tâche '{nom_tache}' a été supprimée avec succès.")
+        # Redirige vers la liste des tâches ou une autre page
+        return redirect('voir_taches', projet_id=projet_id)  # Remplace 'liste_taches' par le bon nom de vue
+
+    # Si ce n'est pas une requête POST, redirige simplement
+    return redirect('voir_taches', projet_id=projet_id)

@@ -13,16 +13,7 @@ PAYS_CHOICES = [
     ('BENIN', 'BENIN'),
     ('TOGO', 'TOGO'),
     ('NIGER','NIGER'),
-
-    ('SENEGAL', 'SENEGAL'),
-    ('GABON', 'GABON'),
-    ('CAMEROUN','CAMEROUN'),
-    ('CONGO', 'CONGO'),
-     ('GUINEE', 'GUINEE'),
-    ('MALI', 'MALI'),
-    ('CENTRAFRIQUE', 'CENTRAFRIQUE'),
-    ('TCHAD', 'TCHAD'),
-    ('REPUBLIQUE DEMOCRATIQUE DU CONGO', 'REPUBLIQUE DEMOCRATIQUE DU CONGO',),
+   
     
 ]
 
@@ -82,7 +73,7 @@ class Personnel(models.Model):
     statut = models.CharField (max_length=50, choices= STATUT_PERSONNEL_CHOICES ,default='Actif')
     residence = models.CharField(max_length=100)
     competences = models.ManyToManyField('Competence', through='Posseder', related_name='personnel')
-
+    
     @property
     def statut_choices(self):
         return self.STATUT_CHOICES

@@ -5,6 +5,13 @@
 <div class="container mt-5">
     <h2 class="mb-4">Former une Équipe</h2>
 
+    <!-- Affichage des erreurs générales du formulaire -->
+    {% if formset.non_form_errors %}
+        <div class="alert alert-danger">
+            {{ formset.non_form_errors }}
+        </div>
+    {% endif %}
+
     <form method="post" novalidate>
         {% csrf_token %}
 
@@ -13,7 +20,9 @@
                 Informations sur l'équipe
             </div>
             <div class="card-body">
+                <!-- Erreurs générales du formulaire principal -->
                 {{ equipe_form.non_field_errors }}
+
                 {% for field in equipe_form %}
                     <div class="mb-3">
                         <label class="form-label">{{ field.label }}</label>
@@ -32,6 +41,7 @@
             </div>
             <div class="card-body">
                 {{ formset.management_form }}
+
                 {% for form in formset %}
                     <div class="border rounded p-3 mb-3">
                         {% for field in form.visible_fields %}
@@ -43,8 +53,12 @@
                                 {% endif %}
                             </div>
                         {% endfor %}
+
+                        <!-- Erreurs non liées à un champ spécifique -->
                         {% if form.non_field_errors %}
-                            <div class="text-danger">{{ form.non_field_errors }}</div>
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
                         {% endif %}
                     </div>
                 {% endfor %}
@@ -57,7 +71,6 @@
         </div>
     </form>
 </div>
-
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -78,13 +91,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const allOptions = Array.from(currentSelect.querySelectorAll('option'));
 
             allOptions.forEach(option => {
-                // Toujours laisser la première option vide
+                // Ne pas cacher l'option vide
                 if (option.value === "") return;
 
-                // Réafficher tout d'abord
+                // Réafficher toutes les options au départ
                 option.hidden = false;
 
-                // Cacher si sélectionnée ailleurs
+                // Cacher si déjà sélectionné ailleurs
                 if (
                     selectedValues.includes(option.value) &&
                     option.value !== currentValue
@@ -99,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function () {
         select.addEventListener('change', updateSelectOptions);
     });
 
-    updateSelectOptions(); // Initial
+    updateSelectOptions(); // Initial call
 });
 </script>
 

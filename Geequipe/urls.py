@@ -1,6 +1,6 @@
 from django.urls import include, path, reverse_lazy
 from ETCH import settings
-from Geequipe.views import affecter_equipe, ajouter_projet, ajouter_taches, assign_tasks_to_team, changer_statut_activite, changer_statut_personnel, creer_equipe, creer_mobilisation, enregistrer_agent, equipes_disponibles, exporter_projet_excel,  index, liste_activites, liste_equipes, liste_mobilisations, login_page, logout_view, mobiliser_equipes, modifier_agent, modifier_equipe, modifier_projet, modifier_statut_projet, organiser_mobilisation, projets_disponibles, resume_mobilisation, search_results, supprimer_activite, supprimer_affectation, supprimer_agent, supprimer_equipe, supprimer_projet, tabpersonels, tabprojet, voir_certificats, voir_taches
+from Geequipe.views import affecter_equipe, ajouter_projet, ajouter_taches, assign_tasks_to_team, changer_statut_activite, changer_statut_personnel, creer_equipe, creer_mobilisation, enregistrer_agent, equipes_disponibles, exporter_projet_excel, get_personnels_by_role,  index, liste_activites, liste_equipes, liste_mobilisations, login_page, logout_view, mobiliser_equipes, modifier_agent, modifier_equipe, modifier_projet, modifier_statut_projet, organiser_mobilisation, projets_disponibles, resume_mobilisation, search_results, supprimer_activite, supprimer_affectation, supprimer_agent, supprimer_equipe, supprimer_projet, supprimer_tache, tabpersonels, tabprojet, voir_certificats, voir_taches
 from django.contrib.auth import views as auth_views
 from django.conf.urls.static import static
 
@@ -66,8 +66,9 @@ urlpatterns = [
     path('affectation/<int:affectation_id>/assigner-taches/', assign_tasks_to_team, name='assign_tasks_to_team'),
 
     path('search/', search_results, name='search_results'),
+    path('api/get-personnels/', get_personnels_by_role, name='get_personnels_by_role'),
 
-
+    path('tache/supprimer/<int:tache_id>/', supprimer_tache, name='supprimer_tache'),
 
    
 
