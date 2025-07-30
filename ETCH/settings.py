@@ -14,6 +14,8 @@ import os
 from pathlib import Path
 from pyexpat.errors import messages
 
+import dj_database_url
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -25,9 +27,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-l_joj2pd+ovv&7kb2^9gj#3h_6(dy$y*-c^szk!ih+ry!xo-c+'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS', '')]
+
+if not DEBUG:
+    # Assurez-vous que cette liste est vide si ALLOWED_HOSTS n'est pas défini via ENV
+    # ou contienne votre domaine Render une fois connu.
+    # Exemple: ALLOWED_HOSTS.append('mon-app-django.onrender.com')
+    pass # Render injectera l'hôte si la variable est vide
+
 #message d'erreur et de succes
 MESSAGE_TAGS = {
     # ...
@@ -54,6 +63,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'whitenoise.middleware.WhiteNoiseMiddleware'
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -86,15 +96,22 @@ WSGI_APPLICATION = 'ETCH.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME':'db.sqlite3',
+#         # 'USER' : 'postgres',
+#         # 'PASSWORD': 'etech@2025',
+#         # 'HOST': 'localhost',
+#         # 'PORT': '5432',
+#     }
+# }
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME':'db.sqlite3',
-        # 'USER' : 'postgres',
-        # 'PASSWORD': 'etech@2025',
-        # 'HOST': 'localhost',
-        # 'PORT': '5432',
-    }
+    'default': dj_database_url.config(
+        default='sqlite:///db.sqlite3',
+        conn_max_age=600
+    )
 }
 
 
@@ -133,8 +150,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
-
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+#WHITE_NOISE_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 

@@ -1,0 +1,31 @@
+# render.yaml
+
+#N'oubliez pas de remplacer mon_projet, mon_app_db, mon_app_django_db, mon_app_user, et mon-app-django.onrender.com par vos valeurs réelles.
+
+databases:
+  - name: Geequipe # Nom de votre base de données Render
+    plan: free      # Utilise le plan gratuit
+    databaseName:  # Nom de la base de données PostgreSQL
+    user: mon_app_user # Nom d'utilisateur de la base de données
+
+services:
+  - type: web
+    name: Geequipe # Nom de votre service web sur Render
+    runtime: python
+    buildCommand: "./build.sh" # Script de build, voir étape suivante
+    startCommand: "gunicorn mon_projet.wsgi:application --bind 0.0.0.0:$PORT" # Commande pour démarrer l'application
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: Geequipe
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true # Render générera une clé secrète sécurisée
+      - key: WEB_CONCURRENCY
+        value: 4 # Nombre de workers Gunicorn (ajustez si besoin)
+      - key: DEBUG
+        value: "False" # Assurez-vous que DEBUG est False en production
+      - key: ALLOWED_HOSTS # Ajoutez l'URL de Render ici une fois que vous l'aurez
+        value: "Geequipe.onrender.com" # Remplacez par votre URL Render
+    autoDeploy: true # Déploiement automatique à chaque push sur main
+    # healthCheckPath: /health # Optionnel : ajoutez un endpoint de health check si vous en avez un
