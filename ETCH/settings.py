@@ -29,7 +29,7 @@ SECRET_KEY = 'django-insecure-l_joj2pd+ovv&7kb2^9gj#3h_6(dy$y*-c^szk!ih+ry!xo-c+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS', '')]
+ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS', 'https://etch-scoi.onrender.com')]
 
 if not DEBUG:
     # Assurez-vous que cette liste est vide si ALLOWED_HOSTS n'est pas défini via ENV
