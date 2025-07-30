@@ -13,7 +13,7 @@ services:
     name: Geequipe # Nom de votre service web sur Render
     runtime: python
     buildCommand: "./build.sh" # Script de build, voir étape suivante
-    startCommand: "gunicorn mon_projet.wsgi:application --bind 0.0.0.0:$PORT" # Commande pour démarrer l'application
+    startCommand: "gunicorn ETCH.wsgi:application --bind 0.0.0.0:$PORT" # Commande pour démarrer l'application
     envVars:
       - key: DATABASE_URL
         fromDatabase:
