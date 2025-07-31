@@ -27,8 +27,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-l_joj2pd+ovv&7kb2^9gj#3h_6(dy$y*-c^szk!ih+ry!xo-c+'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-#DEBUG = os.environ.get('DEBUG', 'False') == 'True'
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+#DEBUG = True
 
 #ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS', 'https://etch-scoi.onrender.com')]
 ALLOWED_HOSTS = ['192.168.1.16', 'localhost', '127.0.0.1']
