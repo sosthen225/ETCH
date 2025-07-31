@@ -25,7 +25,7 @@ urlpatterns = [
 
    #path('api/competences-certificats/',get_competences_certificats, name='get_competences_certificats'),
     path('api/enregistrer-agent/', enregistrer_agent, name='enregistrer_agent'),
-    path('/accueil/personels/modifier_agent/<int:agent_id>/', modifier_agent, name='modifier_agent'),
+    path('accueil/personels/modifier_agent/<int:agent_id>/', modifier_agent, name='modifier_agent'),
     path('agents/supprimer/<int:agent_id>/',supprimer_agent, name='supprimer_agent'),
     path('projets/<int:agent_id>/changer-statut/',changer_statut_personnel, name='changer_statut_agent'),
     path('modifier_statut/<int:projet_id>/',modifier_statut_projet, name='modifier_statut_projet'),
